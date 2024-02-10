@@ -38,17 +38,22 @@ enum MessageType {
 #[allow(non_camel_case_types)]
 pub type VIRTUAL_KEY = u32;
 
-trait ToChar {
+pub trait ToChar {
     fn to_char(&self) -> char;
 
     fn to_char_localized(&self) -> char;
 }
 
-trait ToUnicode {
+pub trait ToUnicode {
     fn to_unicode(&self) -> Option<String>;
 
     fn to_unicode_localized(&self) -> Option<String>;
 }
+
+pub trait ToScanCode {
+    fn to_code(&self) -> u32;
+}
+
 #[allow(non_camel_case_types)]
 #[repr(u32)]
 enum MapType {
@@ -69,6 +74,8 @@ impl ToChar for VIRTUAL_KEY {
     }
 }
 
+
+
 #[repr(u32)]
 enum Mofiier {
     ALT,
@@ -81,11 +88,7 @@ enum Mofiier {
     RWIN = 92,
     LWIN = 91
 }
-struct KeyPressed {
-    scan_code: i32,
-    vk: VIRTUAL_KEY,
-    unicode: Option<String>
-}
+
 
 impl ToUnicode for VIRTUAL_KEY {
     fn to_unicode(&self) -> Option<String> {
@@ -94,6 +97,12 @@ impl ToUnicode for VIRTUAL_KEY {
 
     fn to_unicode_localized(&self) -> Option<String> {
         return to_unicode(*self, get_foreground_window_keyboard_layout())
+    }
+}
+
+impl ToScanCode for VIRTUAL_KEY {
+    fn to_code(&self) -> u32 {
+        unsafe { MapVirtualKeyW(*self, MAPVK_VK_TO_VSC as u32) }
     }
 }
 

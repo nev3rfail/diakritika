@@ -3,6 +3,7 @@ use std::any::Any;
 use std::collections::{HashMap, HashSet};
 
 use std::hash::{Hash, Hasher};
+use std::mem::ManuallyDrop;
 use once_cell::sync::{Lazy, OnceCell};
 
 use parking_lot::RwLock;
@@ -12,22 +13,37 @@ pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
 });
 
 
-enum KeyboardKey {
-    VK(VIRTUAL_KEY),
-    Code(u32),
+#[derive(Eq, Hash, PartialEq, Debug)]
+struct KeyPressed {
+    scan_code: u32,
+    vk: VIRTUAL_KEY,
+    unicode: Option<String>,
+    localized_unicode: Option<String>
 }
 
-struct PressedKey(
-);
-struct KeyPressed(
-    KeyboardKey, KeyboardKey
-);
+
+
+impl KeyPressed {
+    pub fn from_code(vk: VIRTUAL_KEY) -> Self {
+        Self::from_scan_and_code(vk, unsafe { MapVirtualKeyW(vk, MAPVK_VK_TO_VSC as u32) })
+    }
+
+    pub fn from_scan_and_code(vk: VIRTUAL_KEY, scan: u32) -> Self {
+        Self {
+            scan_code: scan,
+            vk,
+            unicode: vk.to_unicode(),
+            localized_unicode: vk.to_unicode_localized()
+        }
+    }
+}
 pub struct KeyManager(HashSet<VIRTUAL_KEY>, Vec<CallbackContainer>);
 
 
 use std::ops::Fn;
 use anyhow::Error;
-use crate::win::VIRTUAL_KEY;
+use winapi::um::winuser::{MapVirtualKeyW, MAPVK_VK_TO_VSC};
+use crate::win::{ToUnicode, VIRTUAL_KEY};
 
 trait CallbackWithArg: Any + Send + Sync {
     fn call(&self, extra: &KeyManager) -> Result<bool, anyhow::Error>;

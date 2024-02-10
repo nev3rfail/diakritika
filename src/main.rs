@@ -1,16 +1,25 @@
 use std::ptr;
+use std::sync::Arc;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DispatchMessageW, GetMessageW, MSG, RegisterClassW, TranslateMessage, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+use crate::hotkeymanager::{HotkeyManager, Key, KeyBinding};
+use crate::keymanager::KEY_MANAGER_INSTANCE;
 use crate::win::load_preload_keyboard_layouts;
 
 mod win;
 mod keymanager;
+mod hotkeymanager;
+
+
 
 fn main() {
     //println!("Hello, world!");
     create_window()
 }
 pub fn create_window() {
+
+
+
     // Register window class
     unsafe {
         let class_name = "MyWindowClass\0";
