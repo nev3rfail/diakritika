@@ -1,5 +1,6 @@
 mod keyboard;
 pub(crate) mod window;
+pub(crate)mod keyboard_vk;
 
 use std::ffi::{c_int, OsString};
 use std::os::windows::prelude::OsStringExt;

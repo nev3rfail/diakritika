@@ -5,12 +5,13 @@ use crate::keymanager::KEY_MANAGER_INSTANCE;
 use crate::win::{HC_ACTION, KEYBOARD_HOOK, MessageType, ToChar, ToUnicode};
 use num_traits::FromPrimitive;
 use std::fmt::Debug;
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 
 struct KBDStructWrapper(KBDLLHOOKSTRUCT);
 
 impl Debug for KBDStructWrapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "KBDLLHOOKSTRUCT vk: {}, scan: {}, flags: {}, time: {}, extra: {} | char [{}|{}] | unicode [{:?}|{:?}]", self.0.vkCode, self.0.scanCode, self.0.flags, self.0.time, self.0.dwExtraInfo, self.0.vkCode.to_char(), self.0.vkCode.to_char_localized(), self.0.vkCode.to_unicode(), self.0.vkCode.to_unicode_localized())
+        write!(f, "KBDLLHOOKSTRUCT vk: {} | {:?}, scan: {}, flags: {}, time: {}, extra: {} | char [{}|{}] | unicode [{:?}|{:?}]", self.0.vkCode, KNOWN_VIRTUAL_KEY::try_from(self.0.vkCode), self.0.scanCode, self.0.flags, self.0.time, self.0.dwExtraInfo, self.0.vkCode.to_char(), self.0.vkCode.to_char_localized(), self.0.vkCode.to_unicode(), self.0.vkCode.to_unicode_localized())
     }
 }
 

@@ -69,6 +69,6 @@ parking_lot = {  version = "0.12", features = [ "send_guard", "arc_lock"] }
 once_cell = "1.18.0"
 num-traits = { version = "0.2", features = ["default"] }
 num-derive = { version = "0.4", features = [] }
-derive_more = { version = "1.0.0-beta.6", features = ["debug"] }
+derive_more = { version = "1.0.0-beta.6", features = ["debug", "from_str"] }
 winreg = "0.52.0"
 ini = "1.3.0"

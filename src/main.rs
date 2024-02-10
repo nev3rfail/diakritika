@@ -1,15 +1,31 @@
 use std::ptr;
+use std::str::FromStr;
 use std::sync::Arc;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DispatchMessageW, GetMessageW, MSG, RegisterClassW, TranslateMessage, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 use crate::hotkeymanager::{HotkeyManager, Key, KeyBinding};
 use crate::keymanager::KEY_MANAGER_INSTANCE;
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::load_preload_keyboard_layouts;
 
 mod win;
 mod keymanager;
 mod hotkeymanager;
 
+/// Parse binding that looks like lshift+alt+b+0x18
+fn parse_binding(binding_str: &str) -> KeyBinding {
+    let parts: Vec<&str> = binding_str.split('+').collect();
+    parts.iter().map(|&part| {
+        if part.starts_with("0x") {
+            Key::Scancode(u32::from_str_radix(&part[2..], 16).unwrap())
+        } else if part.len() > 1 {
+            // VK binding, to be handled later
+            Key::VK(KNOWN_VIRTUAL_KEY::from_human(part).expect("From human failed").into()) // Placeholder
+        } else {
+            Key::Char(part.to_owned())
+        }
+    }).collect()
+}
 
 
 fn main() {
