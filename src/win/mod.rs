@@ -1,4 +1,4 @@
-mod keyboard;
+pub(crate) mod keyboard;
 pub(crate) mod window;
 pub(crate)mod keyboard_vk;
 
@@ -10,8 +10,8 @@ use num_derive::FromPrimitive;
 use winapi::shared::minwindef::{DWORD, HKL};
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::winbase::FormatMessageW;
-use winapi::um::winnt::LPWSTR;
-use winapi::um::winuser::{GetForegroundWindow, GetKeyboardLayout, GetKeyboardState, GetWindowThreadProcessId, LoadKeyboardLayoutW, MapVirtualKeyExW, MapVirtualKeyW, MAPVK_VK_TO_VSC, ToUnicode, ToUnicodeEx, VK_LWIN, VK_SHIFT};
+use winapi::um::winnt::{LPWSTR, WCHAR};
+use winapi::um::winuser::{GetForegroundWindow, GetKeyboardLayout, GetKeyboardState, GetWindowThreadProcessId, LoadKeyboardLayoutW, MapVirtualKeyExW, MapVirtualKeyW, MAPVK_VK_TO_VSC, ToUnicode, ToUnicodeEx, VK_LWIN, VK_SHIFT, VkKeyScanW};
 use winreg::enums::HKEY_CURRENT_USER;
 use winreg::RegKey;
 use crate::win::MapType::MAPVK_VK_TO_CHAR;
@@ -90,6 +90,14 @@ enum Mofiier {
     LWIN = 91
 }
 
+pub fn char_to_vk_key_scan(ch: char) -> (u8, u8) { // Returns (virtual key code, shift state)
+    unsafe {
+        let vk = VkKeyScanW(ch as WCHAR) as u16;
+        let vk_code = (vk & 0xFF) as u8; // Low-order byte contains the virtual key code
+        let shift_state = ((vk >> 8) & 0xFF) as u8; // High-order byte contains the shift state
+        (vk_code, shift_state)
+    }
+}
 
 impl ToUnicode for VIRTUAL_KEY {
     fn to_unicode(&self) -> Option<String> {

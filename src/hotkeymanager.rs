@@ -1,5 +1,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::convert::Infallible;
+use std::fmt::{Debug, Display, Formatter};
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender, SendError};
@@ -7,8 +9,11 @@ use std::thread;
 use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use crate::keybindings::Dump;
 use crate::keymanager::{KEY_MANAGER_INSTANCE, KeyManager};
 use crate::win::{ToScanCode, ToUnicode, VIRTUAL_KEY};
+use crate::win::keyboard_vk::{KNOWN_VIRTUAL_KEY, UnknownVirtualKey};
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LSHIFT, VK_RSHIFT, VK_SHIFT};
 
 /*pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
     Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
@@ -26,18 +31,95 @@ pub static HOTKEY_MANAGER_INSTANCE: Lazy<Arc<parking_lot::Mutex<HotkeyManager>>>
 });
 
 
+#[derive(Clone)]
 pub enum Key {
-    VK(VIRTUAL_KEY),
-    Char(String),
+    VirtualKey(VIRTUAL_KEY),
+    Character(String),
     Scancode(u32)
 }
+
+impl Debug for Key {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match &self {
+            Key::VirtualKey(k) => {
+                match KNOWN_VIRTUAL_KEY::try_from(*k) {
+                    Ok(k) => format!("{:?}", k),
+                    Err(e) => format!("{}", e.into_inner())
+                }
+            }
+            Key::Character(char) => format!("{}", char),
+            Key::Scancode(code) => format!("{:x}", code),
+        })
+    }
+}
+
 pub type KeyBinding = Vec<Key>; // Now a Vec to preserve order
-type Callback = Box<dyn Fn() + Send + Sync>;
+
+impl Dump for KeyBinding {
+    fn dump(&self) -> String {
+        return String::from(format!("{:?}", self))
+    }
+}
+
+type Callback = Box<dyn Fn(HashSet<VIRTUAL_KEY>) + Send + Sync>;
+
+pub trait HasCharacter {
+    fn has_character(&self) -> bool;
+
+    fn has_character_value(&self, exact: String) -> bool;
+}
+
+pub trait HasShift {
+    fn has_shift(&self) -> bool;
+}
+
+impl HasShift for KeyBinding {
+    fn has_shift(&self) -> bool {
+        self.iter().any(|key| matches!(key, Key::VirtualKey(vk) if vk == &VK_SHIFT.into() || vk == &VK_LSHIFT.into() || vk == &VK_RSHIFT.into()))
+    }
+}
+
+pub trait HasVirtualKey {
+    fn has_virtual_key(&self) -> bool;
+
+    fn has_virtual_key_value(&self, exact: VIRTUAL_KEY) -> bool;
+}
+
+impl HasCharacter for KeyBinding {
+    fn has_character(&self) -> bool {
+        self.iter().any(|key| matches!(key, Key::Character(_)))
+    }
+    fn has_character_value(&self, exact: String) -> bool {
+        self.iter().any(|key| {
+            if let Key::Character(value) = key {
+                value == &exact
+            } else {
+                false
+            }
+        })
+    }
+}
+
+impl HasVirtualKey for KeyBinding {
+    fn has_virtual_key(&self) -> bool {
+        self.iter().any(|key| matches!(key, Key::VirtualKey(_)))
+    }
+
+    fn has_virtual_key_value(&self, exact: VIRTUAL_KEY) -> bool {
+        self.iter().any(|key| {
+            if let Key::VirtualKey(vk) = key {
+                *vk == exact
+            } else {
+                false
+            }
+        })
+    }
+}
 
 enum BindingAction {
     Callback(Callback),
-    Channel(Sender<()>),
-    Magic(Sender<()>),
+    Channel(Sender<HashSet<VIRTUAL_KEY>>),
+    Magic(Sender<HashSet<VIRTUAL_KEY>>),
 }
 
 struct HotkeyBinding {
@@ -86,18 +168,18 @@ impl HotkeyManager {
     }
 
     pub(crate) fn add_magic_binding(&mut self, keys: KeyBinding, callback: Callback, ordered: bool) {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx): (Sender<HashSet<VIRTUAL_KEY>>, Receiver<HashSet<VIRTUAL_KEY>>) = mpsc::channel();
 
         thread::spawn(move || {
-            for _ in rx {
+            for data in rx {
                 println!("WOW! something arrived!");
-                callback();
+                callback(data);
             }
         });
         self._add_binding(keys, BindingAction::Magic(tx), ordered)
     }
 
-    pub fn add_channel_binding(&mut self, keys: KeyBinding) -> Receiver<()> {
+    pub fn add_channel_binding(&mut self, keys: KeyBinding) -> Receiver<HashSet<VIRTUAL_KEY>> {
         let (tx, rx) = mpsc::channel();
         self._add_binding(keys, BindingAction::Channel(tx), false);
         rx
@@ -113,21 +195,20 @@ impl HotkeyManager {
         if let Some(bindings) = self.bindings_by_length.get(&pressed_count) {
             for binding in bindings {
                 if self.is_triggered(pressed_keys, &binding, &mut scancode_cache, &mut char_cache) {
-
-                }
-                match &binding.action {
-                    BindingAction::Callback(cb) => cb(),
-                    BindingAction::Channel(tx) | BindingAction::Magic(tx) => {
-                        let sent = tx.send(());
-                        match sent {
-                            Ok(ok) => {}
-                            Err(error) => {
-                                println!("BROKEN PIPE: {:?}", error);
+                    match &binding.action {
+                        BindingAction::Callback(cb) => cb(pressed_keys.clone()),
+                        BindingAction::Channel(tx) | BindingAction::Magic(tx) => {
+                            let sent = tx.send(pressed_keys.clone());
+                            match sent {
+                                Ok(ok) => {}
+                                Err(error) => {
+                                    println!("BROKEN PIPE: {:?}", error);
+                                }
                             }
                         }
                     }
+                    return true;
                 }
-                return true;
             }
         }
 
@@ -139,17 +220,19 @@ impl HotkeyManager {
         // Example for character bindings:
         for key in &binding.keys {
             match key {
-                Key::VK(vk) => {
+                Key::VirtualKey(vk) => {
+                    println!("Checking if {:?} in {:?}", vk, pressed_keys);
                     if !pressed_keys.contains(vk) {
                         return false;
                     }
                 },
-                Key::Char(expected_str) => {
+                Key::Character(expected_str) => {
                     let pressed_str = pressed_keys.iter().find_map(|&vk| {
                         // Clone the String to ensure the returned value is owned and not a reference
                         char_cache.entry(vk).or_insert_with(|| vk.to_unicode_localized()).clone()
                     });
                     // Compare Option<&String> with &Option<String> using map and as_deref
+                    println!("Checking if {:?} in {:?}", expected_str, pressed_str);
                     if pressed_str.as_deref() != Some(expected_str) {
                         return false
                     }
@@ -158,6 +241,7 @@ impl HotkeyManager {
                     // Find the pressed scan code by converting each virtual key code using the cache
                     let pressed_sc_match = pressed_keys.iter().any(|&vk| {
                         let pressed_sc = scancode_cache.entry(vk).or_insert_with(|| vk.to_code());
+                        println!("Checking if {:?} in {:?}", expected_sc, pressed_sc);
                         pressed_sc == expected_sc
                     });
                     if !pressed_sc_match {

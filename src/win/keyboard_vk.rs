@@ -13,6 +13,12 @@ impl Into<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
 
 pub struct UnknownVirtualKey(u32);
 
+impl UnknownVirtualKey {
+    pub fn into_inner(self) -> u32 {
+        return self.0
+    }
+}
+
 impl Debug for UnknownVirtualKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "UnknownVirtualKey({})", self.0)
@@ -38,13 +44,18 @@ impl TryFrom<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
 impl KNOWN_VIRTUAL_KEY {
     pub(crate) fn from_human(human_readable: &str) -> Result<Self, anyhow::Error> {
         let mut machine = "VK_".to_owned();
-        machine.extend(human_readable.to_owned().chars());
+        machine.extend(human_readable
+            .replace("alt", "menu")
+            .replace("meta", "win")
+            .replace("mod4", "win")
+            .to_uppercase()
+            .to_owned().chars());
         Ok(Self::from_str(&machine)?)
     }
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromStr, FromPrimitive, Debug)]
+#[derive(FromStr, FromPrimitive, Debug, PartialEq)]
 pub enum KNOWN_VIRTUAL_KEY {
     VK_0 =       0x30,
     VK_1 =       0x31,
