@@ -1,10 +1,10 @@
-name: Rust
+name: Bleeding Edge
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "dev" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "dev" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,4 +17,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --release --verbose
+      run: cargo build --verbose
