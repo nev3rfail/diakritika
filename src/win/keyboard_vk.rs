@@ -75,6 +75,7 @@ impl KNOWN_VIRTUAL_KEY {
                 .replace("alt", "menu")
                 .replace("meta", "win")
                 .replace("mod4", "win")
+                .replace("ctrl", "control")
                 .to_uppercase()
                 .to_owned());
         Ok(Self::from_str(&machine)?)

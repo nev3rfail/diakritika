@@ -292,9 +292,7 @@ impl HotkeyManager {
             ordered,
             triggered: false,
         };
-        //let link = &binding;
-        // Insert the new binding into the appropriate VecDeque based on its length
-        // If there's no entry for this length yet, create a new VecDeque
+
         let bindings_for_length = self.bindings_by_length.entry(binding_length).or_default();
         bindings_for_length.push_back(binding);
 
