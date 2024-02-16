@@ -13,30 +13,7 @@ pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
 });
 
 
-#[derive(Eq, Hash, PartialEq, Debug)]
-struct KeyPressed {
-    scan_code: u32,
-    vk: VIRTUAL_KEY,
-    unicode: Option<String>,
-    localized_unicode: Option<String>
-}
 
-
-
-impl KeyPressed {
-    pub fn from_code(vk: VIRTUAL_KEY) -> Self {
-        Self::from_scan_and_code(vk, unsafe { MapVirtualKeyW(vk, MAPVK_VK_TO_VSC as u32) })
-    }
-
-    pub fn from_scan_and_code(vk: VIRTUAL_KEY, scan: u32) -> Self {
-        Self {
-            scan_code: scan,
-            vk,
-            unicode: vk.to_unicode(),
-            localized_unicode: vk.to_unicode_localized()
-        }
-    }
-}
 pub struct KeyManager(PressedKeys, Vec<HookContainer>);
 
 

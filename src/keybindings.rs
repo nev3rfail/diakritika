@@ -62,7 +62,7 @@ pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option
                 let ex = expand_modifiers(&mut binding);
                 let upper =  if capitalize {
                     let cap = clone_with_modifier_if_needed(char_to_post, &ex, VK_SHIFT);
-                    if cap.len() > 0 {
+                    if !cap.is_empty() {
                         Some(cap)
                     } else {
                         None
@@ -88,25 +88,6 @@ pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option
     bindings
 }
 
-// Extract modifier application logic to a separate function for clarity
-/*fn apply_modifiers(binding: &mut KeyBinding) {
-    let mut bindings: KeyBindings = Vec::new();
-    let modifiers = [(VK_SHIFT, VK_LSHIFT, VK_RSHIFT), (VK_MENU, VK_LMENU, VK_RMENU)];
-
-    for (vk, vk_left, vk_right) in modifiers.iter().cloned() {
-        if let Some(pos) = binding.iter().position(|k| matches!(k, Key::VirtualKey(vk_code) if vk_code == &(vk.to_u32().unwrap()))) {
-            let with_left = replace_modifier(binding.clone(), pos, vk_left);
-            let with_right = replace_modifier(binding.clone(), pos, vk_right);
-
-            bindings.extend(with_left);
-            bindings.extend(with_right);
-            return; // Assuming only one modifier of each type per binding
-        }
-    }
-}
-*/
-
-
 
 const CONST_VK_SHIFT: u32 = VK_SHIFT as u32;
 const CONST_VK_MENU: u32 = VK_MENU as u32;
@@ -120,7 +101,7 @@ fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
 
     for (i, key) in binding.iter().enumerate() {
         if let Key::VirtualKey(vk) = key {
-            let (left, right) = match (vk as &u32) {
+            let (left, right) = match vk {
                 &CONST_VK_SHIFT => (VK_LSHIFT as u32, VK_RSHIFT as u32),
                 &CONST_VK_MENU => (VK_LMENU as u32, VK_RMENU as u32),
                 &CONST_VK_CONTROL => (VK_LCONTROL as u32, VK_RCONTROL as u32),
@@ -143,23 +124,3 @@ fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
 
     expanded_bindings
 }
-
-// Function to replace a modifier key with its left or right equivalent
-fn replace_modifier(mut binding: KeyBinding, pos: usize, modifier: KNOWN_VIRTUAL_KEY) -> KeyBinding {
-    binding[pos] = Key::VirtualKey(modifier.into());
-    binding
-}
-
-/*fn sort_char_key_bindings(bindings: &CharKeyBindings) -> BTreeMap<char, Vec<KeyBinding>> {
-    let mut sorted_keys: Vec<_> = bindings.keys().collect();
-    sorted_keys.sort_by_key(|&k| k.to_uppercase().next().unwrap_or(*k));
-
-    let mut sorted_bindings = BTreeMap::new();
-    for &key in sorted_keys.iter() {
-        if let Some(value) = bindings.get(&key) {
-            sorted_bindings.insert(*key, value.clone());
-        }
-    }
-
-    sorted_bindings
-}*/
