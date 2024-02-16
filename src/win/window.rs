@@ -5,7 +5,7 @@ use winapi::shared::windef::HWND;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::{
-    DefWindowProcW, DeregisterShellHookWindow, SetWindowsHookExW, WH_KEYBOARD_LL,
+    DefWindowProcW, SetWindowsHookExW, WH_KEYBOARD_LL,
 };
 
 use num_traits::FromPrimitive;
