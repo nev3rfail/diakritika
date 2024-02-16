@@ -4,7 +4,11 @@ use std::ptr;
 use winapi::shared::windef::HWND;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DefWindowProcW, DispatchMessageW, GetMessageW, MSG, RegisterClassW, SetWindowsHookExW, TranslateMessage, WH_KEYBOARD_LL, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+use winapi::um::winuser::{
+    CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, RegisterClassW,
+    SetWindowsHookExW, TranslateMessage, COLOR_WINDOW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW,
+    CW_USEDEFAULT, MSG, WH_KEYBOARD_LL, WNDCLASSW, WS_OVERLAPPEDWINDOW,
+};
 
 use num_traits::FromPrimitive;
 pub(crate) unsafe extern "system" fn wnd_proc(
@@ -51,7 +55,6 @@ pub(crate) unsafe extern "system" fn wnd_proc(
         Some(res) => res,
     }
 }
-
 
 pub fn create_window() {
     // Register window class

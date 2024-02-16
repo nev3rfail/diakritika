@@ -6,20 +6,18 @@ use indexmap::IndexSet;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
-use crate::r#type::Dump;
 use crate::r#type::hotkeymanager::Key::VirtualKey;
-use crate::r#type::keyboardhook::{KeyboardHookMetadata};
+use crate::r#type::keyboardhook::KeyboardHookMetadata;
+use crate::r#type::Dump;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LSHIFT, VK_RSHIFT, VK_SHIFT};
 use crate::win::{is_meta_or_alt, ToScanCode, ToUnicode, VIRTUAL_KEY};
-
 
 pub type KeyBindings = Vec<KeyBinding>;
 pub type CharKeyBindings = BTreeMap<BindingChar, KeyBindings>;
 
 pub type BindingChar = char;
 pub type CharBindingState<'a> = HashMap<&'a BindingChar, i32>;
-
 
 impl Dump for CharKeyBindings {
     fn dump(&self) -> String {
@@ -38,7 +36,6 @@ impl Dump for KeyBindings {
             .join("\n")
     }
 }
-
 
 #[derive(Clone)]
 pub enum Key {
@@ -73,7 +70,6 @@ impl Dump for KeyBinding {
         return String::from(format!("{:?}", self));
     }
 }
-
 
 type Callback = Box<dyn Fn(TriggeredHotkey) + Send + Sync>;
 type ChannelSender = Sender<TriggeredHotkey>;

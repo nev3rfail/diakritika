@@ -71,13 +71,15 @@ impl TryFrom<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
 impl KNOWN_VIRTUAL_KEY {
     pub(crate) fn from_human(human_readable: &str) -> Result<Self, anyhow::Error> {
         let mut machine = "VK_".to_owned();
-        machine.push_str(&human_readable
+        machine.push_str(
+            &human_readable
                 .replace("alt", "menu")
                 .replace("meta", "win")
                 .replace("mod4", "win")
                 .replace("ctrl", "control")
                 .to_uppercase()
-                .to_owned());
+                .to_owned(),
+        );
         Ok(Self::from_str(&machine)?)
     }
 }

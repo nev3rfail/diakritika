@@ -2,20 +2,18 @@ use std::collections::HashMap;
 
 use ini::configparser::ini::Ini;
 
-
-use crate::keybindings::{bindings_from_map};
+use crate::keybindings::bindings_from_map;
 use crate::r#static::HOTKEY_MANAGER_INSTANCE;
-use crate::r#type::Dump;
 use crate::r#type::hotkeymanager::CharBindingState;
+use crate::r#type::Dump;
 
 use crate::win::keyboard::{send_key_sequence, KeyAction, KeyStroke};
 use crate::win::window::create_window;
 
-
 mod keybindings;
-mod win;
-mod r#type;
 mod r#static;
+mod r#type;
+mod win;
 
 fn main() {
     let mut conf = Ini::new();
@@ -66,4 +64,3 @@ fn main() {
 
     create_window()
 }
-

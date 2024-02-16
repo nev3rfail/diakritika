@@ -1,19 +1,17 @@
-use std::any::Any;
-use anyhow::Error;
 use crate::r#type::hook::{HookContainer, HookMetadata};
 use crate::win::VIRTUAL_KEY;
-
+use anyhow::Error;
+use std::any::Any;
 
 use indexmap::IndexSet;
 
 use once_cell::sync::Lazy;
 
-use parking_lot::RwLock;
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::hotkeymanager::PressedKeys;
+use parking_lot::RwLock;
 
 pub struct KeyManager(PressedKeys, Vec<HookContainer>);
-
 
 pub enum KeyboardHookMetadata {
     Press {
@@ -151,9 +149,9 @@ impl KeyManager {
     pub fn add_hook<F, T>(&mut self, callback: F, arg: T)
     //{
     //fn new<F, T>(callback: F, arg: T) -> Self
-        where
-            F: Fn(&dyn HookMetadata, &T) -> Result<bool, Error> + 'static + Send + Sync,
-            T: 'static + Send + Sync,
+    where
+        F: Fn(&dyn HookMetadata, &T) -> Result<bool, Error> + 'static + Send + Sync,
+        T: 'static + Send + Sync,
     {
         self.1.push(HookContainer::new(callback, arg));
     }

@@ -1,3 +1,6 @@
+use crate::r#static::KEY_MANAGER_INSTANCE;
+use crate::r#type::hotkeymanager::Key::VirtualKey;
+use crate::r#type::hotkeymanager::PressedKeys;
 use crate::win::{ToChar, ToScanCode, ToUnicode, HC_ACTION, KEYBOARD_HOOK, VIRTUAL_KEY};
 use num_traits::FromPrimitive;
 use std::fmt::Debug;
@@ -9,9 +12,6 @@ use winapi::um::winuser::{
     keybd_event, CallNextHookEx, MapVirtualKeyW, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT,
     KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED,
 };
-use crate::r#static::KEY_MANAGER_INSTANCE;
-use crate::r#type::hotkeymanager::Key::VirtualKey;
-use crate::r#type::hotkeymanager::PressedKeys;
 
 use crate::win::keyboard::KeyAction::Press;
 use crate::win::keyboard::KeyType::Classic;
@@ -41,9 +41,9 @@ impl Debug for KBDStructWrapper {
 }
 
 /*else if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
-                println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-                Some(1)
-            }*/
+    println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
+    Some(1)
+}*/
 /*else if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
 println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
 Some(1)*/
@@ -108,13 +108,10 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
     };
 
     match handled {
-        None => {
-            unsafe { CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param) }
-        }
+        None => unsafe { CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param) },
         Some(res) => res,
     }
 }
-
 
 pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item = &'a KeyStroke> + Clone>(
     keys: T,
@@ -218,7 +215,6 @@ pub enum KeyAction {
     Release,
 }
 
-
 impl KeyStroke {
     fn clone_as_press(self) -> KeyStroke {
         let mut pew = self.clone();
@@ -252,11 +248,7 @@ fn send_keystrokes<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item = &'a KeyStroke
     }
 }
 
-pub fn send_key_sequence(
-    pre_keys: &[KeyStroke],
-    the_char: &[KeyStroke],
-    post_keys: &[KeyStroke]
-) {
+pub fn send_key_sequence(pre_keys: &[KeyStroke], the_char: &[KeyStroke], post_keys: &[KeyStroke]) {
     let mut inputs = Vec::new();
     inputs.is_empty();
     inputs.extend(pre_keys);

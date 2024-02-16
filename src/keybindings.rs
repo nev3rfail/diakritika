@@ -1,10 +1,12 @@
 use std::collections::{BTreeMap, HashMap};
 
-use std::iter::once_with;
 use crate::r#static;
+use std::iter::once_with;
 
+use crate::r#type::hotkeymanager::{
+    CharKeyBindings, HasCharacter, HasShift, Key, KeyBinding, KeyBindings,
+};
 use crate::r#type::Dump;
-use crate::r#type::hotkeymanager::{Key, KeyBinding, HasCharacter, HasShift, CharKeyBindings, KeyBindings};
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{
     VK_CONTROL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RMENU,
@@ -76,8 +78,6 @@ pub(crate) fn bindings_from_map(
     bindings
 }
 
-
-
 fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
     let mut expanded_bindings: Vec<KeyBinding> = vec![binding.clone()]; // Start with the original binding
 
@@ -127,4 +127,3 @@ fn clone_with_modifier_if_needed(
 
     created_bingdings
 }
-

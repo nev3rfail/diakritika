@@ -1,10 +1,10 @@
-use std::sync::Arc;
+use crate::r#type::hotkeymanager::HotkeyManager;
+use crate::r#type::keyboardhook::{KeyManager, KeyboardHookMetadata};
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_CONTROL, VK_LWIN, VK_MENU, VK_SHIFT};
 use indexmap::IndexSet;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
-use crate::r#type::hotkeymanager::HotkeyManager;
-use crate::r#type::keyboardhook::{KeyboardHookMetadata, KeyManager};
-use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_CONTROL, VK_LWIN, VK_MENU, VK_SHIFT};
+use std::sync::Arc;
 
 pub const CONST_VK_SHIFT: u32 = VK_SHIFT as u32;
 pub const CONST_VK_MENU: u32 = VK_MENU as u32;
@@ -13,8 +13,6 @@ pub const CONST_VK_WIN: u32 = VK_LWIN as u32;
 
 pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> =
     Lazy::new(|| RwLock::new(KeyManager::with_storage(IndexSet::with_capacity(20))));
-
-
 
 pub static HOTKEY_MANAGER_INSTANCE: Lazy<Arc<parking_lot::Mutex<HotkeyManager>>> =
     Lazy::new(|| {
