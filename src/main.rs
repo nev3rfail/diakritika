@@ -7,7 +7,7 @@ use winapi::shared::minwindef::BYTE;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DispatchMessageW, GetMessageW, keybd_event, KEYEVENTF_KEYUP, MapVirtualKeyW, MAPVK_VSC_TO_VK, MSG, RegisterClassW, TranslateMessage, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 use crate::hotkeymanager::{HasCharacter, HasShift, HasVirtualKey, HOTKEY_MANAGER_INSTANCE, HotkeyManager, Key, KeyBinding};
-use crate::keybindings::{bindings_from_map, CharKeyBindings, Dump, KeyBindings};
+use crate::keybindings::{bindings_from_map, CharBindingState, CharKeyBindings, Dump, KeyBindings};
 use crate::keymanager::KEY_MANAGER_INSTANCE;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_MENU, VK_RMENU, VK_RSHIFT, VK_SHIFT};
@@ -22,6 +22,7 @@ mod keybindings;
 
 
 
+struct HotkeyState(KeyBinding, bool);
 
 fn main() {
     //send_unicode_character('є');
@@ -33,14 +34,19 @@ fn main() {
     let bindings = bindings_from_map(the_conf);
 
     println!("Parsed keybindings: {}", bindings.dump());
-
+    let mut state: CharBindingState = HashMap::new();
     bindings.into_iter().for_each(|(char_to_post, key_bindings)| {
+        let char_to_post_clone = char_to_post.clone();
+        //state.insert(char_to_post_clone, -1);
         key_bindings.into_iter().for_each(move |binding| {
             // Clone char_to_post to move a copy into the closure
+
             let char_to_post_clone = char_to_post.clone();
 
-            HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |keys| {
-                let pre_keys: Vec<KeyStroke> = keys.iter()
+
+            let the_binding = HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |triggered| {
+                println!("press! {:?}", triggered);
+                let pre_keys: Vec<KeyStroke> = /*filter_modifier_keys*/(&triggered.1).iter()
                     .map(|&vk| KeyStroke::classic(vk, KeyAction::Release))
                     .collect();
 
@@ -55,6 +61,8 @@ fn main() {
                 send_key_sequence(&pre_keys, char_to_post_clone, &[], false);
                 println!("released");
 
+            }), Box::new(move |triggered| {
+                println!("release! {:?}", triggered)
             }), false);
         });
     });

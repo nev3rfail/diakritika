@@ -43,8 +43,13 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                     }
                     KEYBOARD_HOOK::WM_KEYUP | KEYBOARD_HOOK::WM_SYSKEYUP => {
                         let result = &KEY_MANAGER_INSTANCE.write().keyup(kbd_struct.vkCode as _);
-
-                        None
+                        if *result == true {
+                            //println!("IT FUKKEN WORKED?");
+                            Some(1)
+                        } else {
+                            None
+                        }
+                        //None
                     }
                     //_ => {}
                 }
