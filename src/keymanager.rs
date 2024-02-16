@@ -134,10 +134,10 @@ impl KeyManager {
 
     pub fn keydown(&mut self, key: VIRTUAL_KEY) -> bool {
         let old_pressed = self.0.clone();
-        return if self.0.insert(key) {
-            let mut i = 0;
+        let existed = self.0.insert(key);
+        //if existed {
             let mut result = false;
-            for item in self.1.iter() {
+            for (i, item) in self.1.iter().enumerate() {
                 result = item.trigger(&KeyboardHookMetadata::Press {
                     key,
                     pressed_keys: self.0.clone(),
@@ -146,15 +146,14 @@ impl KeyManager {
                     println!("Error processing hook #{}: {:?}", i, e);
                     false
                 });
-                i+=1;
                 if result == true {
                     break
                 }
             }
             result
-        } else {
+        /*} else {
             false
-        }
+        }*/
     }
 
     pub(crate) fn dump(&self) -> &HashSet<VIRTUAL_KEY> {
@@ -163,10 +162,10 @@ impl KeyManager {
 
     pub fn keyup(&mut self, key: VIRTUAL_KEY) -> bool {
         let old_pressed = self.0.clone();
-        return if self.0.remove(&key) {
-            let mut i = 0;
+        let existed = self.0.remove(&key);
+        //if existed {
             let mut result = false;
-            for item in self.1.iter() {
+            for (i, item) in self.1.iter().enumerate() {
                 result = item.trigger(&KeyboardHookMetadata::Release {
                     key,
                     pressed_keys: self.0.clone(),
@@ -175,15 +174,14 @@ impl KeyManager {
                     println!("Error processing hook #{}: {:?}", i, e);
                     false
                 });
-                i+=1;
                 if result == true {
                     break
                 }
             }
             result
-        } else {
+        /*} else {
             false
-        }
+        }*/
     }
 
     pub fn add_hook<F, T>(&mut self, callback: F, arg: T) //{

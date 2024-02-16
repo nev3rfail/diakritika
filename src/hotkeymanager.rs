@@ -310,7 +310,7 @@ impl HotkeyManager {
         let mut char_cache: HashMap<u32, Option<String>> = HashMap::new();
 
         if let Some(bindings) = self.bindings_by_length.get_mut(&pressed_count) {
-            for binding in bindings.into_iter() {
+            for binding in bindings.iter_mut() {
                 if binding.should_trigger(pressed_keys, &mut scancode_cache, &mut char_cache) {
                     println!("TRIGGERED");
                     return binding.execute_binding_actions(metadata, pressed_keys)

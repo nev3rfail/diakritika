@@ -18,7 +18,7 @@ use crate::win::MapType::MAPVK_VK_TO_CHAR;
 
 #[allow(non_camel_case_types)]
 #[repr(u32)]
-#[derive(PartialEq, FromPrimitive)]
+#[derive(PartialEq, FromPrimitive, Debug)]
 enum KEYBOARD_HOOK {
     WM_KEYDOWN = 256u32,
     WM_KEYUP = 257,
@@ -67,11 +67,11 @@ enum MapType {
 
 impl ToChar for VIRTUAL_KEY {
     fn to_char(&self) -> char {
-        return to_char(*self, null_mut())
+        to_char(*self, null_mut())
     }
 
     fn to_char_localized(&self) -> char {
-        return to_char(*self, get_foreground_window_keyboard_layout())
+        to_char(*self, get_foreground_window_keyboard_layout())
     }
 }
 
@@ -101,23 +101,23 @@ pub fn char_to_vk_key_scan(ch: char) -> (u8, u8) { // Returns (virtual key code,
 
 impl ToUnicode for VIRTUAL_KEY {
     fn to_unicode(&self) -> Option<String> {
-        return to_unicode(*self, null_mut())
+        to_unicode(*self, null_mut())
     }
 
     fn to_unicode_localized(&self) -> Option<String> {
-        return to_unicode(*self, get_foreground_window_keyboard_layout())
+        to_unicode(*self, get_foreground_window_keyboard_layout())
     }
 }
 
 impl ToScanCode for VIRTUAL_KEY {
     fn to_code(&self) -> u32 {
-        unsafe { MapVirtualKeyW(*self, MAPVK_VK_TO_VSC as u32) }
+        unsafe { MapVirtualKeyW(*self, MAPVK_VK_TO_VSC) }
     }
 }
 
 fn to_char(key: VIRTUAL_KEY, locale: HKL) -> char {
     let char = unsafe { MapVirtualKeyExW(key, MAPVK_VK_TO_CHAR as u32, locale) };
-    return char::try_from(char).expect(&*format!("Failed to extract char from {} [{}]", key, char))
+    char::try_from(char).unwrap_or_else(|e| panic!("Failed to extract char from {} [{}]: {}", key, char, e))
 }
 
 fn to_unicode(key: VIRTUAL_KEY, locale: HKL) -> Option<String> {
@@ -140,7 +140,7 @@ fn to_unicode(key: VIRTUAL_KEY, locale: HKL) -> Option<String> {
     let result = unsafe {
         ToUnicodeEx(
             key,
-            MapVirtualKeyW(key, MAPVK_VK_TO_VSC as u32),
+            MapVirtualKeyW(key, MAPVK_VK_TO_VSC),
             the_key_state,
             buffer.as_mut_ptr(),
             buffer_size,
@@ -149,12 +149,12 @@ fn to_unicode(key: VIRTUAL_KEY, locale: HKL) -> Option<String> {
         )
     };
 
-    return if result > 0 {
+    if result > 0 {
         // Successfully translated the key press into a Unicode character
         let translated_chars = &buffer[..result as usize];
         // Handle or display the translated characters as needed
         let s = String::from_utf16(translated_chars);
-        println!("Translated characters: {:?}", translated_chars);
+        //println!("Translated characters: {:?}", translated_chars);
 
         Some(s.expect("Can't convert translated_chars to String"))
     } else {
@@ -195,7 +195,7 @@ fn get_foreground_window_keyboard_layout() -> HKL {
         let mut process_id: DWORD = 0;
         let thread_id = GetWindowThreadProcessId(hwnd, &mut process_id as *mut DWORD); // Get thread ID
         let layout = GetKeyboardLayout(thread_id); // Get the keyboard layout for the thread
-        if layout == ptr::null_mut() {
+        if layout.is_null() {
             println!("{}", get_last_error_message());
         }
         layout

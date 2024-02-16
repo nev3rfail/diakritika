@@ -49,20 +49,18 @@ fn main() {
                 let pre_keys: Vec<KeyStroke> = /*filter_modifier_keys*/(&triggered.1).iter()
                     .map(|&vk| KeyStroke::classic(vk, KeyAction::Release))
                     .collect();
-
-                /*let post_keys: Vec<KeyStroke> = filter_modifier_keys(&keys).iter()
-                    .map(|&vk| KeyStroke { key_type: KeyType::ScanCode, action: KeyAction::Press, scancode: vk.to_code() })
-                    .collect();*/
-
-                /*release_virtual_keys(keys.clone());
-                send_unicode_character(char_to_post_clone);
-                press_virtual_keys(keys);*/
                 println!("releasing");
-                send_key_sequence(&pre_keys, char_to_post_clone, &[], false);
+
+                let char_keystroke = KeyStroke::unicode(char_to_post_clone, KeyAction::Press);
+                //let char_keystroke_up = char_keystroke.clone_as_release();
+                println!("{:?}", char_keystroke);
+                send_key_sequence(&pre_keys, &[char_keystroke], &[], false);
                 println!("released");
 
             }), Box::new(move |triggered| {
-                println!("release! {:?}", triggered)
+                let char_keystroke = KeyStroke::unicode(char_to_post_clone, KeyAction::Release);
+                println!("release! {:?}", triggered);
+                send_key_sequence(&[], &[char_keystroke], &[], false);
             }), false);
         });
     });
