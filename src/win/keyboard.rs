@@ -174,10 +174,11 @@ pub(crate) fn send_key_sequence(pre_keys: &[KeyStroke], ch: char, post_keys: &[K
         scancode: ch as u32,
         action: KeyAction::Press,
     }));
-    thread::sleep(Duration::from_millis(100));
+
     unsafe {
         SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
     }
+    thread::sleep(Duration::from_millis(100));
     //thread::sleep(Duration::from_millis(100));
     let mut inputs = Vec::new();
     inputs.push(create_input(KeyStroke {

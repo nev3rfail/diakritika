@@ -6,7 +6,7 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender, SendError};
 use std::thread;
-use num_traits::ToPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use crate::keybindings::Dump;
@@ -44,7 +44,7 @@ impl Debug for Key {
             Key::VirtualKey(k) => {
                 match KNOWN_VIRTUAL_KEY::try_from(*k) {
                     Ok(k) => format!("{:?}", k),
-                    Err(e) => format!("{}", e.into_inner())
+                    Err(e) => format!("VIRTUAL_KEY({})", e.into_inner())
                 }
             }
             Key::Character(char) => format!("{}", char),
@@ -142,6 +142,16 @@ impl Bindable for u32 {
     }
 }
 
+type PressedKeys = HashSet<u32>;
+
+impl Dump for PressedKeys {
+    fn dump(&self) -> String {
+        self.iter().map(|item| { Key::VirtualKey(*item) }).collect::<Vec<_>>().dump()
+    }
+}
+
+
+
 impl HotkeyManager {
     pub fn new() -> Self {
         HotkeyManager {
@@ -218,11 +228,13 @@ impl HotkeyManager {
     fn is_triggered(&self, pressed_keys: &HashSet<u32>, binding: &HotkeyBinding, scancode_cache: &mut HashMap<u32, u32>, char_cache: &mut HashMap<u32, Option<String>>) -> bool {
         // Similar implementation as before, but use the caches for conversions
         // Example for character bindings:
+        print!("{} = {}", binding.keys.dump(), pressed_keys.dump());
         for key in &binding.keys {
             match key {
                 Key::VirtualKey(vk) => {
-                    println!("Checking if {:?} in {:?}", vk, pressed_keys);
+                    //println!("Checking if {:?} in {:?}", KNOWN_VIRTUAL_KEY::try_from(*vk), pressed_keys.iter().map(|v|{ KNOWN_VIRTUAL_KEY::try_from(*v) }).collect::<Vec<_>>());
                     if !pressed_keys.contains(vk) {
+                        println!(" == false");
                         return false;
                     }
                 },
@@ -232,8 +244,9 @@ impl HotkeyManager {
                         char_cache.entry(vk).or_insert_with(|| vk.to_unicode_localized()).clone()
                     });
                     // Compare Option<&String> with &Option<String> using map and as_deref
-                    println!("Checking if {:?} in {:?}", expected_str, pressed_str);
+                    //println!("Checking if {:?} in {:?}", expected_str, pressed_str);
                     if pressed_str.as_deref() != Some(expected_str) {
+                        println!(" == false");
                         return false
                     }
                 },
@@ -241,17 +254,17 @@ impl HotkeyManager {
                     // Find the pressed scan code by converting each virtual key code using the cache
                     let pressed_sc_match = pressed_keys.iter().any(|&vk| {
                         let pressed_sc = scancode_cache.entry(vk).or_insert_with(|| vk.to_code());
-                        println!("Checking if {:?} in {:?}", expected_sc, pressed_sc);
                         pressed_sc == expected_sc
                     });
                     if !pressed_sc_match {
+                        println!(" == false");
                         return false;
                     }
                 },
 
             }
         }
-
+        println!(" == true");
         true
     }
 

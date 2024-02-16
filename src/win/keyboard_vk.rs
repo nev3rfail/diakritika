@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter, write};
 use derive_more::FromStr;
-use num_derive::FromPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
 use crate::win::VIRTUAL_KEY;
 
@@ -55,7 +55,7 @@ impl KNOWN_VIRTUAL_KEY {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(FromStr, FromPrimitive, Debug, PartialEq)]
+#[derive(FromStr, FromPrimitive, ToPrimitive, Debug, PartialEq, Clone, Copy)]
 pub enum KNOWN_VIRTUAL_KEY {
     VK_0 =       0x30,
     VK_1 =       0x31,

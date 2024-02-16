@@ -5,9 +5,9 @@ use std::sync::Arc;
 use ini::configparser::ini::Ini;
 use winapi::shared::minwindef::BYTE;
 use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DispatchMessageW, GetMessageW, keybd_event, KEYEVENTF_KEYUP, MapVirtualKeyW, MSG, RegisterClassW, TranslateMessage, WNDCLASSW, WS_OVERLAPPEDWINDOW};
+use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DispatchMessageW, GetMessageW, keybd_event, KEYEVENTF_KEYUP, MapVirtualKeyW, MAPVK_VSC_TO_VK, MSG, RegisterClassW, TranslateMessage, WNDCLASSW, WS_OVERLAPPEDWINDOW};
 use crate::hotkeymanager::{HasCharacter, HasShift, HasVirtualKey, HOTKEY_MANAGER_INSTANCE, HotkeyManager, Key, KeyBinding};
-use crate::keybindings::{bindings_from_map, Dump};
+use crate::keybindings::{bindings_from_map, CharKeyBindings, Dump, KeyBindings};
 use crate::keymanager::KEY_MANAGER_INSTANCE;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_MENU, VK_RMENU, VK_RSHIFT, VK_SHIFT};
@@ -27,6 +27,7 @@ fn main() {
     //send_unicode_character('є');
     //return;
     //println!("Hello, world!");
+    println!("!!!!!{:?}", unsafe { MapVirtualKeyW(91, MAPVK_VSC_TO_VK)});
     let mut conf = Ini::new();
     let the_conf = conf.load("bindings.ini").unwrap();
     let bindings = bindings_from_map(the_conf);
@@ -62,7 +63,23 @@ fn main() {
 
     create_window()
 }
-fn modify_bindings(bindings: &mut HashMap<char, Vec<KeyBinding>>) {
+
+
+fn clone_with_modifier_if_needed(char_to_post: char, bindings: &KeyBindings, modifier: KNOWN_VIRTUAL_KEY) -> KeyBindings {
+    let mut created_bingdings = Vec::new();
+
+    for binding in bindings {
+        if binding.has_character() && !binding.has_shift() && char_to_post.is_lowercase() {
+            let mut modified_binding = binding.clone();
+            modified_binding.insert(0, Key::VirtualKey(modifier as u32)); // Or VK_LSHIFT, if preferred
+            created_bingdings.push(modified_binding);
+        }
+    }
+
+    return created_bingdings
+}
+
+fn modify_bindings(bindings: &mut CharKeyBindings) {
     let mut additions = Vec::new();
 
     for (&char_to_post, key_bindings) in bindings.iter() {
