@@ -46,7 +46,7 @@ impl Dump for KeyBindings {
 }
 
 
-/// Read bindings from map. If map value is empty, then append
+/// Read bindings from map. If map value is empty, then
 pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option<String>>>) -> CharKeyBindings {
     let mut bindings: CharKeyBindings = BTreeMap::new();
 
@@ -56,16 +56,23 @@ pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option
 
         prop.iter().for_each(|(key, value)| {
             let mut binding = parse_binding(key);
-
-            if value.is_none() {
-                // Refactor the loop with VK_WIN presence check
+            let capitalize = value.is_none();
                 let ex = expand_modifiers(&mut binding);
-                let upper = clone_with_modifier_if_needed(char_to_post, &ex, VK_SHIFT);
+                let upper =  if capitalize {
+                    let cap = clone_with_modifier_if_needed(char_to_post, &ex, VK_SHIFT);
+                    if cap.len() > 0 {
+                        Some(cap)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
                 bindings.entry(char_to_post).or_default().extend(ex);
-                if !upper.is_empty() {
+                if upper.is_some() {
                     let upper = once_with(|| {
                         let mut new = Vec::new();
-                        upper.iter().for_each(|item| {
+                        upper.unwrap().iter().for_each(|item| {
                             let ex = expand_modifiers(item);
                             new.extend(ex)
                         });
@@ -73,7 +80,6 @@ pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option
                     }).next().expect("OMG WTF");
                     bindings.entry(char_to_post.to_uppercase().next().unwrap()).or_default().extend(upper);
                 }
-            }
         });
     }
 
