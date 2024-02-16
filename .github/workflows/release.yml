@@ -31,7 +31,7 @@ jobs:
         run: |
           cargo build --release --target ${{ matrix.target }}
           $binary_path = "target/${{ matrix.target }}/release/$env:binary_name.exe"
-          Compress-Archive -Path $binary_path, your-ini-file.ini -DestinationPath release-${{ matrix.target }}.zip
+          Compress-Archive -Path $binary_path, bindings.ini -DestinationPath release-${{ matrix.target }}.zip
 
       - name: Create Release and Upload x86_64 Asset
         if: matrix.target == 'x86_64-pc-windows-msvc'
