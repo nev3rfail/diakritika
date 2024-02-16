@@ -1,7 +1,7 @@
 # Ďíáǩříťíǩád
 
 >I just thought that it's a shame the word `diakritika`
-does not have any diacriticas in it.
+does not have any diacritics in it.
 
 
 #### Key points
