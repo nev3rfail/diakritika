@@ -4,7 +4,7 @@
 does not have any diacritics in it.
 
 
-#### Key points
+### Key points
 * `diakritika` is a simple daemon that allows you to type your favourite european language's modifiers (`diacritics`)
 in a way that does not twist your arm and does not take away your @s and #s and $s. You can now say goodbye to your horrible Czech keyboard!
 * Program is controlled with a simple configuration file with hot-reload*.
@@ -13,17 +13,17 @@ in a way that does not twist your arm and does not take away your @s and #s and 
 * It also allows to bind letters on both of your Alts and use bindings like `LAlt+s` to paste `š`
 
 
-#### Configuration
+### Configuration
 is simple:
 * start a new line
 * put the letter you want to type into an `[]`. For example, [ř]
 * On the next line key add key combinations that should trigger this letter, one binding per line (see an example below).
-> Program automatically detects characters from config:
-> Everything with a length of 1 character is a string symbol
-> Everything that starts with 0x will be treated as a scancode
-> Otherwise assuming that this is a virtual key name without "VK_" and trying to construct a virtual key (ref: src/win/keyboard_vk.rs:87)
+    * Program automatically detects characters from config:
+    * Everything with a length of 1 character is a string symbol
+    * Everything that starts with 0x will be treated as a scancode
+    * Otherwise assuming that this is a virtual key name without "VK_" and trying to construct a virtual key (ref: src/win/keyboard_vk.rs:87)
 
-⚠ You are also not restricted to simple bindings like alt+s, you can do something like `ctrl`+`n`+`m`+`F2` to paste a shit emoji and it should be fine.
+>⚠ You are also not restricted to simple bindings like alt+s, you can do something like `ctrl`+`n`+`m`+`F2` to paste a shit emoji and it should be fine.
 
 ```ini
 [á]
@@ -56,9 +56,6 @@ alt+y
 alt+z
 
 
-[є]
-ALT+э
-ALT+'
 [і]
 ALT+ы
 ALT+s
@@ -66,13 +63,16 @@ ALT+s
 win+ы
 alt+ъ
 alt+]
+[є]
+ALT+э
+ALT+'
 
 ```
 
 ***hot reload is not implemented yet**
 
 
-#### TODO:
+### TODO:
 * Add logging with `log` instead of prints
 * Clean up mixed Debug and Display traits for structures
 * Resolve conflicts and don't add conflicting declarations
