@@ -160,7 +160,7 @@ pub fn filter_modifier_keys(vk_list: &HashSet<VIRTUAL_KEY>) -> Vec<VIRTUAL_KEY> 
         .collect()
 }
 // Function to send a sequence of keypresses, a Unicode character, and another sequence of keypresses
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct KeyStroke {
     key_type: KeyType,
     virtual_key: u32, // Use for ScanCode and Unicode as character code
@@ -188,13 +188,13 @@ impl KeyStroke {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeyType {
     Unicode,
     Classic,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeyAction {
     Press,
     Release,
@@ -248,6 +248,7 @@ fn send_keystrokes<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item=&'a KeyStroke> 
 pub fn send_key_sequence(pre_keys: &[KeyStroke], ch: char, post_keys: &[KeyStroke], split: bool) {
     let char_keystroke = KeyStroke::unicode(ch, KeyAction::Press);
     let char_keystroke_up = char_keystroke.clone_as_release();
+    println!("{:?} {:?}", char_keystroke, char_keystroke_up);
     if split {
         send_keystrokes(pre_keys);
         thread::sleep(Duration::from_millis(100));

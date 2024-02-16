@@ -79,28 +79,7 @@ fn clone_with_modifier_if_needed(char_to_post: char, bindings: &KeyBindings, mod
     return created_bingdings
 }
 
-fn modify_bindings(bindings: &mut CharKeyBindings) {
-    let mut additions = Vec::new();
 
-    for (&char_to_post, key_bindings) in bindings.iter() {
-        for binding in key_bindings {
-            if binding.has_character() && !binding.has_shift() && char_to_post.is_lowercase() {
-                // Create a copy of the binding and prepend a VK_SHIFT
-                let mut modified_binding = binding.clone();
-                modified_binding.insert(0, Key::VirtualKey(VK_SHIFT.into())); // Or VK_LSHIFT, if preferred
-
-                // Convert char_to_post to uppercase and prepare it for addition to the map
-                let uppercase_char = char_to_post.to_uppercase().next().unwrap(); // Safe unwrap, uppercase always returns at least one char
-                additions.push((uppercase_char, modified_binding));
-            }
-        }
-    }
-
-    // Add the new bindings to the map
-    for (uppercase_char, new_binding) in additions {
-        bindings.entry(uppercase_char).or_insert_with(Vec::new).push(new_binding);
-    }
-}
 pub fn create_window() {
 
 

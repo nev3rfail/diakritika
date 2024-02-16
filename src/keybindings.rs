@@ -4,7 +4,7 @@ use std::iter::once_with;
 use std::str::Chars;
 use num_traits::ToPrimitive;
 use crate::hotkeymanager::{Key, KeyBinding};
-use crate::{clone_with_modifier_if_needed, modify_bindings,};
+use crate::{clone_with_modifier_if_needed};
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_CONTROL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT};
 

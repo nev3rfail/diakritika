@@ -194,10 +194,7 @@ fn get_foreground_window_keyboard_layout() -> HKL {
         let hwnd = GetForegroundWindow(); // Get handle to the foreground window
         let mut process_id: DWORD = 0;
         let thread_id = GetWindowThreadProcessId(hwnd, &mut process_id as *mut DWORD); // Get thread ID
-        println!("fg {}", hwnd as u32);
-        println!("thread_id {}", process_id);
         let layout = GetKeyboardLayout(thread_id); // Get the keyboard layout for the thread
-        println!("layout {}", layout as u32);
         if layout == ptr::null_mut() {
             println!("{}", get_last_error_message());
         }
