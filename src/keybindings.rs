@@ -6,10 +6,10 @@ use std::iter::once_with;
 use crate::r#type::hotkeymanager::{
     CharKeyBindings, HasCharacter, HasShift, Key, KeyBinding, KeyBindings,
 };
-use crate::r#type::Dump;
+
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{
-    VK_CONTROL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RMENU,
+    VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_RCONTROL, VK_RMENU,
     VK_RSHIFT, VK_SHIFT,
 };
 

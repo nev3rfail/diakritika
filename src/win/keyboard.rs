@@ -5,11 +5,11 @@ use crate::win::{ToChar, ToScanCode, ToUnicode, HC_ACTION, KEYBOARD_HOOK, VIRTUA
 use num_traits::FromPrimitive;
 use std::fmt::Debug;
 use std::fmt::Formatter;
-use std::time::Duration;
-use std::{ptr, thread};
+
+use std::{ptr};
 use winapi::shared::minwindef::{BYTE, DWORD, UINT};
 use winapi::um::winuser::{
-    keybd_event, CallNextHookEx, MapVirtualKeyW, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT,
+    keybd_event, CallNextHookEx, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT,
     KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED,
 };
 
