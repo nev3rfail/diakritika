@@ -9,7 +9,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use parking_lot::RwLock;
 
 pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
-    RwLock::new(KeyManager::with_storage(HashSet::with_capacity(20)))
+    RwLock::new(KeyManager::with_storage(IndexSet::with_capacity(20)))
 });
 
 
@@ -37,12 +37,15 @@ impl KeyPressed {
         }
     }
 }
-pub struct KeyManager(HashSet<VIRTUAL_KEY>, Vec<HookContainer>);
+pub struct KeyManager(PressedKeys, Vec<HookContainer>);
 
 
 use std::ops::Fn;
 use anyhow::Error;
+use indexmap::IndexSet;
 use winapi::um::winuser::{MapVirtualKeyW, MAPVK_VK_TO_VSC};
+use crate::hotkeymanager::Key::VirtualKey;
+use crate::hotkeymanager::PressedKeys;
 use crate::win::{ToUnicode, VIRTUAL_KEY};
 
 
@@ -51,7 +54,7 @@ trait Hook: Any + Send + Sync {
     fn call(&self, extra: &dyn HookMetadata) -> Result<bool, anyhow::Error>;
 }
 
-// Implement the trait for a specific combination of closure and argument
+
 impl<F, T> Hook for (F, T)
     where
         F: Fn(&dyn HookMetadata, &T) -> Result<bool, anyhow::Error> + 'static + Send + Sync,
@@ -87,14 +90,16 @@ pub trait HookMetadata: Any + Send + Sync {
 pub enum KeyboardHookMetadata {
     Press {
         key: VIRTUAL_KEY,
-        pressed_keys: HashSet<VIRTUAL_KEY>,
-        pressed_keys_before_hook: HashSet<VIRTUAL_KEY>,
+        injected: bool,
+        pressed_keys: PressedKeys,
+        pressed_keys_before_hook: PressedKeys,
         //key_manager: &'a KeyManager
     },
     Release {
         key: VIRTUAL_KEY,
-        pressed_keys: HashSet<VIRTUAL_KEY>,
-        pressed_keys_before_hook: HashSet<VIRTUAL_KEY>,
+        injected: bool,
+        pressed_keys: PressedKeys,
+        pressed_keys_before_hook: PressedKeys,
     },
 }
 impl HookMetadata for KeyboardHookMetadata {
@@ -103,22 +108,61 @@ impl HookMetadata for KeyboardHookMetadata {
     }
 }
 
-/*pub trait TKeyboardHookMetadata {
-    fn pressed_keys(&self) -> &HashSet<VIRTUAL_KEY>;
-}
-*/
-
 impl KeyboardHookMetadata {
-    pub fn pressed_keys(&self) -> &HashSet<VIRTUAL_KEY> {
+    pub fn pressed_keys(&self) -> &PressedKeys {
         match &self {
-            KeyboardHookMetadata::Press { key, pressed_keys, pressed_keys_before_hook } => {
+            KeyboardHookMetadata::Press {  pressed_keys, ..} => {
                 pressed_keys
             }
-            KeyboardHookMetadata::Release { key, pressed_keys, pressed_keys_before_hook } => {
+            KeyboardHookMetadata::Release { pressed_keys_before_hook , .. } => {
                 pressed_keys_before_hook
             }
         }
     }
+
+    pub fn key(&self) -> &VIRTUAL_KEY {
+        match &self {
+            KeyboardHookMetadata::Press { key, ..} => {
+                key
+            }
+            KeyboardHookMetadata::Release { key, .. } => {
+                key
+            }
+        }
+    }
+    pub fn pressing(&self) -> bool {
+        match &self {
+            KeyboardHookMetadata::Press { .. } => {
+                true
+            }
+            KeyboardHookMetadata::Release { .. } => {
+                false
+            }
+        }
+    }
+
+    pub fn releasing(&self) -> bool {
+        match &self {
+            KeyboardHookMetadata::Press { .. } => {
+                false
+            }
+            KeyboardHookMetadata::Release {  .. } => {
+                true
+            }
+        }
+    }
+
+    pub fn injected(&self) -> bool {
+        match &self {
+            KeyboardHookMetadata::Press { injected, .. } => {
+                injected == &true
+            }
+            KeyboardHookMetadata::Release { injected, .. } => {
+                injected == &true
+            }
+        }
+    }
+
 }
 
 
@@ -128,11 +172,11 @@ enum ControlFlow {
     BreakGlobal
 }
 impl KeyManager {
-    pub(crate) fn with_storage(storage: HashSet<VIRTUAL_KEY>) -> Self {
+    pub(crate) fn with_storage(storage: PressedKeys) -> Self {
         Self(storage, Vec::new())
     }
 
-    pub fn keydown(&mut self, key: VIRTUAL_KEY) -> bool {
+    pub fn keydown(&mut self, key: VIRTUAL_KEY, injected: bool) -> bool {
         let old_pressed = self.0.clone();
         let existed = self.0.insert(key);
         //if existed {
@@ -140,12 +184,14 @@ impl KeyManager {
             for (i, item) in self.1.iter().enumerate() {
                 result = item.trigger(&KeyboardHookMetadata::Press {
                     key,
+                    injected,
                     pressed_keys: self.0.clone(),
                     pressed_keys_before_hook: old_pressed.clone()
                 }).unwrap_or_else(|e| {
-                    println!("Error processing hook #{}: {:?}", i, e);
+                    println!("Error processing hookď #{}: {:?}", i, e);
                     false
                 });
+                println!("Hooking keydown of {:?} resulted in {}", VirtualKey(key), result);
                 if result == true {
                     break
                 }
@@ -156,11 +202,11 @@ impl KeyManager {
         }*/
     }
 
-    pub(crate) fn dump(&self) -> &HashSet<VIRTUAL_KEY> {
+    pub(crate) fn dump(&self) -> &PressedKeys {
         &(self.0)
     }
 
-    pub fn keyup(&mut self, key: VIRTUAL_KEY) -> bool {
+    pub fn keyup(&mut self, key: VIRTUAL_KEY, injected: bool) -> bool {
         let old_pressed = self.0.clone();
         let existed = self.0.remove(&key);
         //if existed {
@@ -168,12 +214,14 @@ impl KeyManager {
             for (i, item) in self.1.iter().enumerate() {
                 result = item.trigger(&KeyboardHookMetadata::Release {
                     key,
+                    injected,
                     pressed_keys: self.0.clone(),
                     pressed_keys_before_hook: old_pressed.clone()
                 }).unwrap_or_else(|e| {
                     println!("Error processing hook #{}: {:?}", i, e);
                     false
                 });
+                println!("Hooking keyup of {:?} resulted in {}", VirtualKey(key), result);
                 if result == true {
                     break
                 }

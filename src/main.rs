@@ -22,13 +22,8 @@ mod keybindings;
 
 
 
-struct HotkeyState(KeyBinding, bool);
 
 fn main() {
-    //send_unicode_character('є');
-    //return;
-    //println!("Hello, world!");
-    println!("!!!!!{:?}", unsafe { MapVirtualKeyW(91, MAPVK_VSC_TO_VK)});
     let mut conf = Ini::new();
     let the_conf = conf.load("bindings.ini").unwrap();
     let bindings = bindings_from_map(the_conf);
@@ -45,22 +40,32 @@ fn main() {
 
 
             let the_binding = HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |triggered| {
-                println!("press! {:?}", triggered);
-                let pre_keys: Vec<KeyStroke> = /*filter_modifier_keys*/(&triggered.1).iter()
-                    .map(|&vk| KeyStroke::classic(vk, KeyAction::Release))
-                    .collect();
-                println!("releasing");
+                println!("[ACTIVATION] Triggered {:?} on keypress.", triggered);
 
+                let mut pre_keys: Vec<KeyStroke> =  if triggered.0.triggered {
+                    Vec::new()
+                } else {
+                    println!("[ACTIVATION] Hotkey is not yet activated, releasing pressed keys: {:?}", triggered.1);
+                    /*filter_modifier_keys*/(&triggered.1).iter()
+                        .map(|&vk| KeyStroke::classic(vk, KeyAction::Release))
+                        .collect()
+                };
+                pre_keys.reverse();
                 let char_keystroke = KeyStroke::unicode(char_to_post_clone, KeyAction::Press);
-                //let char_keystroke_up = char_keystroke.clone_as_release();
-                println!("{:?}", char_keystroke);
                 send_key_sequence(&pre_keys, &[char_keystroke], &[], false);
-                println!("released");
-
             }), Box::new(move |triggered| {
+                println!("[DEACTIVATION] Triggered {:?} on ňkeyrelease.", triggered);
+                let mut post_keys: Vec<KeyStroke> =  if triggered.0.triggered {
+                    Vec::new()
+                } else {
+                    println!("[DEACTIVATION] Hotkey is still activated, releasing pressed keys: {:?}", triggered.1);
+                    /*filter_modifier_keys*/(&triggered.1).iter()
+                        .map(|&vk| KeyStroke::classic(vk, KeyAction::Press))
+                        .collect()
+                };
+                //post_keys.reverse();
                 let char_keystroke = KeyStroke::unicode(char_to_post_clone, KeyAction::Release);
-                println!("release! {:?}", triggered);
-                send_key_sequence(&[], &[char_keystroke], &[], false);
+                send_key_sequence(&[], &[char_keystroke], &post_keys, false);
             }), false);
         });
     });
@@ -82,7 +87,7 @@ fn clone_with_modifier_if_needed(char_to_post: char, bindings: &KeyBindings, mod
         }
     }
 
-    return created_bingdings
+    created_bingdings
 }
 
 

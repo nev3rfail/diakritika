@@ -72,7 +72,7 @@ pub(crate) unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, w_param: usi
 
     return match handled {
         None => {
-            println!("No one handled message, redirecting to the next hook :(");
+            //println!("No one handled message, redirecting to the next hook :(");
             DefWindowProcW(hwnd, msg, w_param, l_param)
         }
         Some(res) => {

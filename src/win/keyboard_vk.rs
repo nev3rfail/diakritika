@@ -1,8 +1,9 @@
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter, write};
-use derive_more::FromStr;
+use derive_more::{ FromStr};
 use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::FromPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
+use crate::keybindings::Dump;
 use crate::win::VIRTUAL_KEY;
 
 impl Into<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
@@ -21,17 +22,57 @@ impl UnknownVirtualKey {
 
 impl Debug for UnknownVirtualKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "UnknownVirtualKey({})", self.0)
+        write!(f, "VK({})", self.0)
     }
 }
 
 impl Display for UnknownVirtualKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "UnknownVirtualKey({})", self.0)
+        write!(f, "VK({})", self.0)
     }
 }
 
 impl Error for UnknownVirtualKey {}
+
+
+
+struct VirtualKeyEx(Result<KNOWN_VIRTUAL_KEY, UnknownVirtualKey>);
+
+
+impl Debug for VirtualKeyEx {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            Ok(vk) => write!(f, "{:?}", vk),
+            Err(e) => write!(f, "{:?}", e),
+        }
+    }
+}
+
+impl Into<u32> for VirtualKeyEx {
+    fn into(self) -> u32 {
+        match &self.0 {
+            Ok(vk) => vk.to_u32().expect("WTF"),
+            Err(e) => e.0,
+        }
+    }
+}
+
+impl From<VIRTUAL_KEY> for VirtualKeyEx {
+    fn from(value: VIRTUAL_KEY) -> Self {
+        Self(KNOWN_VIRTUAL_KEY::try_from(value))
+    }
+}
+
+/*impl Debug for Result<KNOWN_VIRTUAL_KEY, UnknownVirtualKey> {
+
+    fn dump(&self) -> String {
+        todo!()
+    }
+
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}*/
 
 impl TryFrom<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
     type Error = UnknownVirtualKey;

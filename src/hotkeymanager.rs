@@ -6,14 +6,17 @@ use std::mem::ManuallyDrop;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender, SendError};
 use std::thread;
+use indexmap::IndexSet;
 use num_traits::{FromPrimitive, ToPrimitive};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use winapi::um::cfgmgr32::CM_NOTIFY_EVENT_DATA;
+use crate::hotkeymanager::Key::VirtualKey;
 use crate::keybindings::Dump;
 use crate::keymanager::{KEY_MANAGER_INSTANCE, KeyboardHookMetadata, KeyManager};
-use crate::win::{ToScanCode, ToUnicode, VIRTUAL_KEY};
+use crate::win::{is_meta_or_alt, ToScanCode, ToUnicode, VIRTUAL_KEY};
 use crate::win::keyboard_vk::{KNOWN_VIRTUAL_KEY, UnknownVirtualKey};
-use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LSHIFT, VK_RSHIFT, VK_SHIFT};
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_LWIN, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT};
 
 /*pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
     Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
@@ -138,10 +141,16 @@ pub struct HotkeyBinding {
     on_press: BindingAction,
     on_release: BindingAction,
     ordered: bool,
-    triggered: bool
+    pub triggered: bool
 }
 
-//pub type TriggeredHotkey = (HotkeyBinding, PressedKeys);
+impl HotkeyBinding {
+    fn is_triggered(&self) -> bool {
+        self.triggered
+    }
+}
+
+
 #[derive(Clone, Debug)]
 pub struct TriggeredHotkey(pub HotkeyBinding, pub PressedKeys);
 
@@ -150,7 +159,7 @@ pub struct TriggeredHotkey(pub HotkeyBinding, pub PressedKeys);
 
 
 impl HotkeyBinding {
-    fn execute_binding_actions(&mut self, metadata: &KeyboardHookMetadata, pressed_keys: &HashSet<VIRTUAL_KEY>) -> bool {
+    fn execute_binding_actions(&mut self, metadata: &KeyboardHookMetadata, pressed_keys: &PressedKeys) -> bool {
         match metadata {
             KeyboardHookMetadata::Press { .. } => {
                 self.on_press.execute_action(self, pressed_keys);
@@ -169,7 +178,7 @@ impl HotkeyBinding {
         }
     }
 
-    fn should_trigger(&self, pressed_keys: &HashSet<u32>, scancode_cache: &mut HashMap<u32, u32>, char_cache: &mut HashMap<u32, Option<String>>) -> bool {
+    fn should_trigger(&self, pressed_keys: &IndexSet<VIRTUAL_KEY>, scancode_cache: &mut HashMap<u32, u32>, char_cache: &mut HashMap<u32, Option<String>>) -> bool {
         print!("{} = {}", self.keys.dump(), pressed_keys.dump());
         for key in &self.keys {
             match key {
@@ -237,7 +246,7 @@ impl Bindable for u32 {
     }
 }
 
-type PressedKeys = HashSet<u32>;
+pub type PressedKeys = IndexSet<VIRTUAL_KEY>;
 
 impl Dump for PressedKeys {
     fn dump(&self) -> String {
@@ -304,6 +313,24 @@ impl HotkeyManager {
 
 
     pub(crate) fn check_and_trigger(&mut self, metadata: &KeyboardHookMetadata) -> bool {
+        let key = *metadata.key();
+        if is_meta_or_alt(key) {
+            let activated = self.bindings_by_length.values()
+                .flat_map(|bindings| bindings.iter()) // Iterate over all bindings in all VecDeques
+                .filter(|binding| binding.is_triggered()) // Keep only those bindings that are triggered
+                .cloned() // Clone the triggered bindings to create a Vec<HotkeyBinding>
+                .collect::<Vec<_>>(); // Collect the filtered and cloned bindings into a Vec
+            if !activated.iter().filter(|f| { f.keys.has_virtual_key_value(key) }).collect::<Vec<_>>().is_empty() {
+                if metadata.pressing() {
+                    println!("!!!!!!!!!!!!!!!! We have running shortcut ignoring {:?}", VirtualKey(key.clone()));
+                    return true
+                } else if metadata.releasing() && metadata.injected() {
+                    println!("!!!!!!!!!!!!!!!! IGNORING INJECTED VALUE THAT WE ARE CURRENTLY PRESSING {:?}", VirtualKey(key));
+                    return true
+                }
+            }
+        }
+
         let pressed_keys = metadata.pressed_keys();
         let pressed_count = pressed_keys.len();
         let mut scancode_cache: HashMap<u32, u32> = HashMap::new();

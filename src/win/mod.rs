@@ -14,6 +14,7 @@ use winapi::um::winnt::{LPWSTR, WCHAR};
 use winapi::um::winuser::{GetForegroundWindow, GetKeyboardLayout, GetKeyboardState, GetWindowThreadProcessId, LoadKeyboardLayoutW, MapVirtualKeyExW, MapVirtualKeyW, MAPVK_VK_TO_VSC, ToUnicode, ToUnicodeEx, VK_LWIN, VK_SHIFT, VkKeyScanW};
 use winreg::enums::HKEY_CURRENT_USER;
 use winreg::RegKey;
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_RMENU, VK_RWIN};
 use crate::win::MapType::MAPVK_VK_TO_CHAR;
 
 #[allow(non_camel_case_types)]
@@ -75,20 +76,10 @@ impl ToChar for VIRTUAL_KEY {
     }
 }
 
-
-
-#[repr(u32)]
-enum Mofiier {
-    ALT,
-    LALT = 164  as VIRTUAL_KEY,
-    RALT = 165 as VIRTUAL_KEY,
-    SHIFT = 0x10,
-    LSHIFT = 160,
-    RSHIFT = 161,
-    WIN,
-    RWIN = 92,
-    LWIN = 91
+pub fn is_meta_or_alt(key: VIRTUAL_KEY) -> bool {
+    key == VK_LMENU as u32 || key == VK_RMENU as u32 ||key == VK_LWIN as u32 ||key == VK_RWIN as u32
 }
+
 
 pub fn char_to_vk_key_scan(ch: char) -> (u8, u8) { // Returns (virtual key code, shift state)
     unsafe {

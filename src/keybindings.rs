@@ -49,7 +49,7 @@ impl Dump for KeyBindings {
 
 
 /// Read bindings from map. If map value is empty, then
-pub(crate) fn bindings_from_map<'a>(the_conf: HashMap<String, HashMap<String, Option<String>>>) -> CharKeyBindings {
+pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option<String>>>) -> CharKeyBindings {
     let mut bindings: CharKeyBindings = BTreeMap::new();
 
     for (section, prop) in the_conf.iter() {

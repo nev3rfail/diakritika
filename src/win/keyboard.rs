@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::{ptr, thread};
 use winapi::um::winuser::{CallNextHookEx, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT, keybd_event, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED, MapVirtualKeyW, SendInput};
 use crate::keymanager::KEY_MANAGER_INSTANCE;
@@ -8,10 +8,16 @@ use num_traits::FromPrimitive;
 use std::fmt::Debug;
 use std::time::Duration;
 use winapi::shared::minwindef::{BYTE, DWORD, UINT};
+use crate::hotkeymanager::Key::VirtualKey;
+use crate::hotkeymanager::{KeyBinding, PressedKeys};
+use crate::keybindings::Dump;
 use crate::win::keyboard::KeyAction::Press;
 use crate::win::keyboard::KeyType::Classic;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_PACKET, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT};
+
+
+pub const KEYSTROKE_MARKER: usize = 0x666;
 
 struct KBDStructWrapper(KBDLLHOOKSTRUCT);
 
@@ -37,14 +43,23 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
         if let Some(ev) = KEYBOARD_HOOK::from_u32(w_param as u32) {
             let kbd_struct = unsafe { *(l_param as *const KBDLLHOOKSTRUCT) };
             // VK_PACKET is sent when someone sends unicode characters
-            if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
+            //if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
+            if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
+            //if kbd_struct.vkCode == VK_PACKET as u32 {
                 println!("[!!!] IGNORE: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
                 None
-            } else {
+            } /*else if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
+                println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
+                Some(1)
+            }*/
+            /*else if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
+            println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
+            Some(1)*/
+         else {
                 match ev {
                     KEYBOARD_HOOK::WM_KEYDOWN | KEYBOARD_HOOK::WM_SYSKEYDOWN => {
-                        println!("[!!!] press: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-                        let result = &KEY_MANAGER_INSTANCE.write().keydown(kbd_struct.vkCode as _);
+                        println!("[!!!] dďďďďďďďďďďďďďďďďďďďďďdddddddddddďďpress: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
+                        let result = &KEY_MANAGER_INSTANCE.write().keydown(kbd_struct.vkCode as _, kbd_struct.flags & LLKHF_INJECTED != 0);
                         if *result == true {
                             //println!("IT FUKKEN WORKED?");
                             Some(1)
@@ -54,7 +69,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                     }
                     KEYBOARD_HOOK::WM_KEYUP | KEYBOARD_HOOK::WM_SYSKEYUP => {
                         println!("[!!!] release: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-                        let result = &KEY_MANAGER_INSTANCE.write().keyup(kbd_struct.vkCode as _);
+                        let result = &KEY_MANAGER_INSTANCE.write().keyup(kbd_struct.vkCode as _, kbd_struct.flags & LLKHF_INJECTED != 0);
                         if *result == true {
                             //println!("IT FUKKEN WORKED?");
                             Some(1)
@@ -76,7 +91,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
 
     return match handled {
         None => {
-            println!("[KBD] aNo one handled message, redirecting to the next hook :(");
+            //println!("[KBD] aNo one handled message, redirecting to the next hook :(");
             unsafe { CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param) }
         }
         Some(res) => {
@@ -85,7 +100,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
     };
 }
 
-pub fn release_virtual_keys(keys: HashSet<VIRTUAL_KEY>) {
+pub fn release_virtual_keys(keys: PressedKeys) {
     for vk in keys {
         let scancode = unsafe { MapVirtualKeyW(vk as UINT, 0) as BYTE }; // Get the scan code for the virtual key
 
@@ -95,7 +110,7 @@ pub fn release_virtual_keys(keys: HashSet<VIRTUAL_KEY>) {
         }
     }
 }
-pub fn press_virtual_keys(keys: HashSet<VIRTUAL_KEY>) {
+pub fn press_virtual_keys(keys: PressedKeys) {
     for vk in keys {
         let scancode = unsafe { MapVirtualKeyW(vk as UINT, 0) as BYTE }; // Get the scan code for the virtual key
 
@@ -108,14 +123,12 @@ pub fn press_virtual_keys(keys: HashSet<VIRTUAL_KEY>) {
 
 pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item=&'a KeyStroke> + Clone>(keys: T) {
     for stroke in keys {
-
+        println!("{:?}", stroke);
         if stroke.key_type == Classic {
-            println!("UNREAL_KEYS {} a classic key {}", if stroke.action == Press { "Pressing"} else {"Releasing"}, stroke.scancode);
             unsafe {
-                keybd_event(stroke.virtual_key as BYTE, stroke.scancode as BYTE, if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 }, 0);
+                keybd_event(stroke.virtual_key as BYTE, stroke.scancode as BYTE, if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 }, KEYSTROKE_MARKER);
             }
         } else {
-            println!("UNREAL_KEYS {} a unicode key {}", if stroke.action == Press { "Pressing"} else {"Releasing"}, stroke.scancode);
             send_keystrokes(&[*stroke]);
         }
     }
@@ -138,7 +151,7 @@ pub fn send_unicode_character(ch: char) {
         wScan: ch as u16,
         dwFlags: KEYEVENTF_UNICODE,
         time: 0,
-        dwExtraInfo: 0,
+        dwExtraInfo: KEYSTROKE_MARKER,
     };
 
     let ki_release = KEYBDINPUT {
@@ -146,7 +159,7 @@ pub fn send_unicode_character(ch: char) {
         wScan: ch as u16,
         dwFlags: KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
         time: 0,
-        dwExtraInfo: 0,
+        dwExtraInfo: KEYSTROKE_MARKER,
     };
     println!("Firing {:x}", ch as u16);
 
@@ -157,7 +170,7 @@ pub fn send_unicode_character(ch: char) {
     }
 }
 
-pub fn filter_modifier_keys(vk_list: &HashSet<VIRTUAL_KEY>) -> Vec<VIRTUAL_KEY> {
+pub fn filter_modifier_keys(vk_list: &PressedKeys) -> Vec<VIRTUAL_KEY> {
     // Define a list of modifier keys
     let modifiers: Vec<VIRTUAL_KEY> = vec![
         VK_SHIFT as u32, // VK_SHIFT
@@ -177,13 +190,26 @@ pub fn filter_modifier_keys(vk_list: &HashSet<VIRTUAL_KEY>) -> Vec<VIRTUAL_KEY> 
         .collect()
 }
 // Function to send a sequence of keypresses, a Unicode character, and another sequence of keypresses
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub(crate) struct KeyStroke {
     key_type: KeyType,
     virtual_key: u32, // Use for ScanCode and Unicode as character code
     scancode: u32, // Use for ScanCode and Unicode as character code
     action: KeyAction,
 }
+
+/*impl Dump for KeyStroke {
+    fn dump(&self) -> String {
+
+    }
+}*/
+
+impl Debug for KeyStroke {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] {:?} {:?} key 0x{:x}", if self.action == Press { "Pressing"} else {"Releasing"}, self.key_type, VirtualKey(self.virtual_key), self.scancode)
+    }
+}
+
 
 impl KeyStroke {
     pub fn classic(virtual_key: VIRTUAL_KEY, action: KeyAction) -> Self {
@@ -211,7 +237,7 @@ pub enum KeyType {
     Classic,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, )]
 pub enum KeyAction {
     Press,
     Release,
@@ -297,7 +323,7 @@ fn create_input(stroke: KeyStroke) -> INPUT {
                     wScan: stroke.scancode as u16, // Unicode character code
                     dwFlags: KEYEVENTF_UNICODE | if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 },
                     time: 0,
-                    dwExtraInfo: 0,
+                    dwExtraInfo: KEYSTROKE_MARKER,
                 }
             },
             KeyType::Classic => {
@@ -306,7 +332,7 @@ fn create_input(stroke: KeyStroke) -> INPUT {
                     wScan: stroke.scancode as u16, // Scancode
                     dwFlags: KEYEVENTF_SCANCODE | if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 },
                     time: 0,
-                    dwExtraInfo: 0,
+                    dwExtraInfo: KEYSTROKE_MARKER,
                 }
             },
         };
