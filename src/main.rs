@@ -40,8 +40,8 @@ fn main() {
             let char_to_post_clone = char_to_post.clone();
 
             HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |keys| {
-                let pre_keys: Vec<KeyStroke> = filter_modifier_keys(&keys).iter()
-                    .map(|&vk| KeyStroke { key_type: KeyType::ScanCode, action: KeyAction::Release, scancode: vk.to_code() })
+                let pre_keys: Vec<KeyStroke> = keys.iter()
+                    .map(|&vk| KeyStroke::classic(vk, KeyAction::Release))
                     .collect();
 
                 /*let post_keys: Vec<KeyStroke> = filter_modifier_keys(&keys).iter()
@@ -52,7 +52,7 @@ fn main() {
                 send_unicode_character(char_to_post_clone);
                 press_virtual_keys(keys);*/
                 println!("releasing");
-                send_key_sequence(&pre_keys, char_to_post_clone, &[]);
+                send_key_sequence(&pre_keys, char_to_post_clone, &[], false);
                 println!("released");
 
             }), false);

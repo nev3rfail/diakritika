@@ -3,11 +3,13 @@ use std::fmt::Formatter;
 use std::{ptr, thread};
 use winapi::um::winuser::{CallNextHookEx, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT, keybd_event, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, MapVirtualKeyW, SendInput};
 use crate::keymanager::KEY_MANAGER_INSTANCE;
-use crate::win::{HC_ACTION, KEYBOARD_HOOK, MessageType, ToChar, ToUnicode, VIRTUAL_KEY};
+use crate::win::{HC_ACTION, KEYBOARD_HOOK, MessageType, ToChar, ToScanCode, ToUnicode, VIRTUAL_KEY};
 use num_traits::FromPrimitive;
 use std::fmt::Debug;
 use std::time::Duration;
 use winapi::shared::minwindef::{BYTE, UINT};
+use crate::win::keyboard::KeyAction::Press;
+use crate::win::keyboard::KeyType::Classic;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_PACKET, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT};
 
@@ -87,6 +89,21 @@ pub fn press_virtual_keys(keys: HashSet<VIRTUAL_KEY>) {
     }
 }
 
+pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item=&'a KeyStroke> + Clone>(keys: T) {
+    for stroke in keys {
+
+        if stroke.key_type == Classic {
+            println!("UNREAL_KEYS {} a classic key {}", if stroke.action == Press { "Pressing"} else {"Releasing"}, stroke.scancode);
+            unsafe {
+                keybd_event(stroke.virtual_key as BYTE, stroke.scancode as BYTE, if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 }, 0);
+            }
+        } else {
+            println!("UNREAL_KEYS {} a unicode key {}", if stroke.action == Press { "Pressing"} else {"Releasing"}, stroke.scancode);
+            send_keystrokes(&[*stroke]);
+        }
+    }
+}
+
 pub fn send_unicode_character(ch: char) {
     let mut inputs = [
         INPUT {
@@ -145,15 +162,36 @@ pub fn filter_modifier_keys(vk_list: &HashSet<VIRTUAL_KEY>) -> Vec<VIRTUAL_KEY> 
 // Function to send a sequence of keypresses, a Unicode character, and another sequence of keypresses
 #[derive(Clone, Copy)]
 pub(crate) struct KeyStroke {
-    pub(crate) key_type: KeyType,
-    pub(crate) scancode: u32, // Use for ScanCode and Unicode as character code
-    pub(crate) action: KeyAction,
+    key_type: KeyType,
+    virtual_key: u32, // Use for ScanCode and Unicode as character code
+    scancode: u32, // Use for ScanCode and Unicode as character code
+    action: KeyAction,
 }
 
-#[derive(Clone, Copy)]
+impl KeyStroke {
+    pub fn classic(virtual_key: VIRTUAL_KEY, action: KeyAction) -> Self {
+        Self {
+            key_type: KeyType::Classic,
+            virtual_key,
+            scancode: virtual_key.to_code(),
+            action
+        }
+    }
+
+    pub fn unicode(char: char, action: KeyAction) -> Self {
+        Self {
+            key_type: KeyType::Unicode,
+            virtual_key: 0,
+            scancode: char as u32,
+            action
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub enum KeyType {
     Unicode,
-    ScanCode,
+    Classic,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -162,37 +200,71 @@ pub enum KeyAction {
     Release,
 }
 
-pub(crate) fn send_key_sequence(pre_keys: &[KeyStroke], ch: char, post_keys: &[KeyStroke]) {
-    let mut inputs = Vec::new();
-
-    // Add pre-keypress actions
-    pre_keys.iter().for_each(|&key| inputs.push(create_input(key)));
-
-    // Add the Unicode character input and its release
-    inputs.push(create_input(KeyStroke {
-        key_type: KeyType::Unicode,
-        scancode: ch as u32,
-        action: KeyAction::Press,
-    }));
-
-    unsafe {
-        SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+/*impl KeyAction {
+    fn to_release(&self) -> Self {
+        KeyAction::Release
     }
-    thread::sleep(Duration::from_millis(100));
-    //thread::sleep(Duration::from_millis(100));
-    let mut inputs = Vec::new();
-    inputs.push(create_input(KeyStroke {
-        key_type: KeyType::Unicode,
-        scancode: ch as u32,
-        action: KeyAction::Release,
-    }));
 
-    // Add post-keypress actions
-    post_keys.iter().for_each(|&key| inputs.push(create_input(key)));
+    fn to_press(&self) -> Self {
+        KeyAction::Press
+    }
+}*/
 
-    // Send the input sequence
-    unsafe {
-        SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+impl KeyStroke {
+    fn clone_as_press(self) -> KeyStroke {
+        let mut pew = self.clone();
+        pew.action = KeyAction::Press;
+        return pew;
+    }
+
+    fn clone_as_release(mut self) -> KeyStroke {
+        let mut pew = self.clone();
+        pew.action = KeyAction::Release;
+        return pew;
+    }
+}
+
+fn send_keystrokes_(keys: &[KeyStroke]) {
+
+    if !keys.is_empty() {
+        unsafe {
+            let mut inputs = keys.iter().map(|&key| create_input(key)).collect::<Vec<_>>();
+            SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+        }
+    }
+}
+
+fn send_keystrokes<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item=&'a KeyStroke> + Clone>(keys: T) {
+    let iter_count = keys.clone().into_iter().count();
+    if iter_count > 0 {
+        unsafe {
+            let mut inputs = keys.into_iter().map(|&key| create_input(key)).collect::<Vec<_>>();
+            SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+        }
+    }
+}
+
+
+pub fn send_key_sequence(pre_keys: &[KeyStroke], ch: char, post_keys: &[KeyStroke], split: bool) {
+    let char_keystroke = KeyStroke::unicode(ch, KeyAction::Press);
+    let char_keystroke_up = char_keystroke.clone_as_release();
+    if split {
+        send_keystrokes(pre_keys);
+        thread::sleep(Duration::from_millis(100));
+        // Add the Unicode character input and its release
+        send_keystrokes(&[char_keystroke]);
+        thread::sleep(Duration::from_millis(100));
+        send_keystrokes(&[char_keystroke_up]);
+        thread::sleep(Duration::from_millis(100));
+
+        send_keystrokes(post_keys);
+    } else {
+        let mut inputs = Vec::new();
+        inputs.is_empty();
+        inputs.extend(pre_keys);
+        inputs.extend([char_keystroke, char_keystroke_up]);
+        inputs.extend(post_keys);
+        virtual_keys(&inputs);
     }
 }
 
@@ -213,7 +285,7 @@ fn create_input(stroke: KeyStroke) -> INPUT {
                     dwExtraInfo: 0,
                 }
             },
-            KeyType::ScanCode => {
+            KeyType::Classic => {
                 KEYBDINPUT {
                     wVk: 0, // Virtual-key code is not needed for scancode input
                     wScan: stroke.scancode as u16, // Scancode

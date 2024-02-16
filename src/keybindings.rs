@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::{Debug, Formatter};
+use std::iter::once_with;
 use std::str::Chars;
 use num_traits::ToPrimitive;
 use crate::hotkeymanager::{Key, KeyBinding};
@@ -62,6 +63,14 @@ pub(crate) fn bindings_from_map(the_conf: HashMap<String, HashMap<String, Option
                 let upper = clone_with_modifier_if_needed(char_to_post, &ex, VK_SHIFT);
                 bindings.entry(char_to_post).or_default().extend(ex);
                 if !upper.is_empty() {
+                    let upper = once_with(|| {
+                        let mut new = Vec::new();
+                        upper.iter().for_each(|item| {
+                            let ex = expand_modifiers(item);
+                            new.extend(ex)
+                        });
+                        new
+                    }).next().expect("OMG WTF");
                     bindings.entry(char_to_post.to_uppercase().next().unwrap()).or_default().extend(upper);
                 }
             }
@@ -95,6 +104,9 @@ const CONST_VK_SHIFT: u32 = VK_SHIFT as u32;
 const CONST_VK_MENU: u32 = VK_MENU as u32;
 const CONST_VK_CONTROL: u32 = VK_CONTROL as u32;
 const CONST_VK_WIN: u32 = VK_LWIN as u32;
+
+
+
 fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
     let mut expanded_bindings: Vec<KeyBinding> = vec![binding.clone()]; // Start with the original binding
 
