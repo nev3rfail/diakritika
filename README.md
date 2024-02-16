@@ -5,7 +5,7 @@ does not have any diacritics in it.
 
 
 ### Key points
-* `diakritika` is a simple daemon that allows you to type your favourite european language's modifiers (`diacritics`)
+* `diakritika` is a simple Windows daemon that allows you to type your favourite european language's modifiers (`diacritics`)
 in a way that does not twist your arm and does not take away your @s and #s and $s. You can now say goodbye to your horrible Czech keyboard!
 * Program is controlled with a simple configuration file with hot-reload*.
 * Sample config uses Czech letters for US layout and Ukrainian letters for the russian layout.
