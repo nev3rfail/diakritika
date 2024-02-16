@@ -77,6 +77,7 @@ alt+]
 * Clean up mixed Debug and Display traits for structures
 * Resolve conflicts and don't add conflicting declarations
 * Hot reload of last good configuration. Inotify / etc?
+* Auto-add program to system startup with admin rights (without admin access the software can't control administrator's applications which is a shame)
 * GitHub CI because manually generation builds is pain
 * Add support of different things instead of typing letters? for example, running scripts
 * I still don't quite like how program handles repeating characters with alt key pressed. and especially with altGr. It works and works great, but not perfect
