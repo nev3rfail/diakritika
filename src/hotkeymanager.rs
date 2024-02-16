@@ -1,59 +1,66 @@
+use std::collections::{HashMap, VecDeque};
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::convert::Infallible;
-use std::fmt::{Debug, Display, Formatter};
-use std::mem::ManuallyDrop;
-use std::sync::Arc;
-use std::sync::mpsc::{self, Receiver, Sender, SendError};
-use std::thread;
+use std::fmt::{Debug, Formatter};
+
 use indexmap::IndexSet;
-use num_traits::{FromPrimitive, ToPrimitive};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
+use std::thread;
+
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
-use winapi::um::cfgmgr32::CM_NOTIFY_EVENT_DATA;
+
 use crate::hotkeymanager::Key::VirtualKey;
 use crate::keybindings::Dump;
-use crate::keymanager::{KEY_MANAGER_INSTANCE, KeyboardHookMetadata, KeyManager};
+use crate::keymanager::{KeyboardHookMetadata, KEY_MANAGER_INSTANCE};
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LSHIFT, VK_RSHIFT, VK_SHIFT};
 use crate::win::{is_meta_or_alt, ToScanCode, ToUnicode, VIRTUAL_KEY};
-use crate::win::keyboard_vk::{KNOWN_VIRTUAL_KEY, UnknownVirtualKey};
-use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_LWIN, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT};
 
 /*pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
     Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
 });
 */
-pub static HOTKEY_MANAGER_INSTANCE: Lazy<Arc<parking_lot::Mutex<HotkeyManager>>> = Lazy::new(|| {
-    let hotkey_manager = Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
+pub static HOTKEY_MANAGER_INSTANCE: Lazy<Arc<parking_lot::Mutex<HotkeyManager>>> =
+    Lazy::new(|| {
+        let hotkey_manager = Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
 
-    KEY_MANAGER_INSTANCE.write().add_hook(|metadata, hotkey_manager| {
-        let s = metadata.as_any().downcast_ref::<KeyboardHookMetadata>().expect("Failed to downcast metadata as keyboard hook.");
-        Ok(hotkey_manager.lock_arc().check_and_trigger(s))
-    },
-    hotkey_manager.clone());
+        KEY_MANAGER_INSTANCE.write().add_hook(
+            |metadata, hotkey_manager| {
+                let s = metadata
+                    .as_any()
+                    .downcast_ref::<KeyboardHookMetadata>()
+                    .expect("Failed to downcast metadata as keyboard hook.");
+                Ok(hotkey_manager.lock_arc().check_and_trigger(s))
+            },
+            hotkey_manager.clone(),
+        );
 
-    hotkey_manager
-});
-
+        hotkey_manager
+    });
 
 #[derive(Clone)]
 pub enum Key {
     VirtualKey(VIRTUAL_KEY),
     Character(String),
-    Scancode(u32)
+    Scancode(u32),
 }
 
 impl Debug for Key {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match &self {
-            Key::VirtualKey(k) => {
-                match KNOWN_VIRTUAL_KEY::try_from(*k) {
-                    Ok(k) => format!("{:?}", k),
-                    Err(e) => format!("VIRTUAL_KEY({})", e.into_inner())
+        write!(
+            f,
+            "{}",
+            match &self {
+                Key::VirtualKey(k) => {
+                    match KNOWN_VIRTUAL_KEY::try_from(*k) {
+                        Ok(k) => format!("{:?}", k),
+                        Err(e) => format!("VIRTUAL_KEY({})", e.into_inner()),
+                    }
                 }
+                Key::Character(char) => format!("{}", char),
+                Key::Scancode(code) => format!("{:x}", code),
             }
-            Key::Character(char) => format!("{}", char),
-            Key::Scancode(code) => format!("{:x}", code),
-        })
+        )
     }
 }
 
@@ -61,7 +68,7 @@ pub type KeyBinding = Vec<Key>; // Now a Vec to preserve order
 
 impl Dump for KeyBinding {
     fn dump(&self) -> String {
-        return String::from(format!("{:?}", self))
+        return String::from(format!("{:?}", self));
     }
 }
 
@@ -110,8 +117,6 @@ impl HasCharacter for KeyBinding {
     }
 }
 
-
-
 impl HasVirtualKey for KeyBinding {
     fn has_virtual_key(&self) -> bool {
         self.iter().any(|key| matches!(key, Key::VirtualKey(_)))
@@ -141,7 +146,7 @@ pub struct HotkeyBinding {
     on_press: BindingAction,
     on_release: BindingAction,
     ordered: bool,
-    pub triggered: bool
+    pub triggered: bool,
 }
 
 impl HotkeyBinding {
@@ -150,16 +155,15 @@ impl HotkeyBinding {
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub struct TriggeredHotkey(pub HotkeyBinding, pub PressedKeys);
 
-
-
-
-
 impl HotkeyBinding {
-    fn execute_binding_actions(&mut self, metadata: &KeyboardHookMetadata, pressed_keys: &PressedKeys) -> bool {
+    fn execute_binding_actions(
+        &mut self,
+        metadata: &KeyboardHookMetadata,
+        pressed_keys: &PressedKeys,
+    ) -> bool {
         match metadata {
             KeyboardHookMetadata::Press { .. } => {
                 self.on_press.execute_action(self, pressed_keys);
@@ -167,18 +171,23 @@ impl HotkeyBinding {
                     self.triggered = true
                 }
                 true
-            },
+            }
             KeyboardHookMetadata::Release { .. } => {
                 self.on_release.execute_action(self, pressed_keys);
                 if self.triggered {
                     self.triggered = false
                 }
                 true
-            },
+            }
         }
     }
 
-    fn should_trigger(&self, pressed_keys: &IndexSet<VIRTUAL_KEY>, scancode_cache: &mut HashMap<u32, u32>, char_cache: &mut HashMap<u32, Option<String>>) -> bool {
+    fn should_trigger(
+        &self,
+        pressed_keys: &IndexSet<VIRTUAL_KEY>,
+        scancode_cache: &mut HashMap<u32, u32>,
+        char_cache: &mut HashMap<u32, Option<String>>,
+    ) -> bool {
         print!("{} = {}", self.keys.dump(), pressed_keys.dump());
         for key in &self.keys {
             match key {
@@ -187,19 +196,22 @@ impl HotkeyBinding {
                         println!(" == false");
                         return false;
                     }
-                },
+                }
                 Key::Character(expected_str) => {
                     let pressed_str = pressed_keys.iter().find_map(|&vk| {
                         // Clone the String to ensure the returned value is owned and not a reference
-                        char_cache.entry(vk).or_insert_with(|| vk.to_unicode_localized()).clone()
+                        char_cache
+                            .entry(vk)
+                            .or_insert_with(|| vk.to_unicode_localized())
+                            .clone()
                     });
                     // Compare Option<&String> with &Option<String> using map and as_deref
                     //println!("Checking if {:?} in {:?}", expected_str, pressed_str);
                     if pressed_str.as_deref() != Some(expected_str) {
                         println!(" == false");
-                        return false
+                        return false;
                     }
-                },
+                }
                 Key::Scancode(expected_sc) => {
                     // Find the pressed scan code by converting each virtual key code using the cache
                     let pressed_sc_match = pressed_keys.iter().any(|&vk| {
@@ -210,8 +222,7 @@ impl HotkeyBinding {
                         println!(" == false");
                         return false;
                     }
-                },
-
+                }
             }
         }
         println!(" == true");
@@ -224,17 +235,18 @@ impl BindingAction {
         match self {
             //BindingAction::Callback(cb) => cb(TriggeredHotkey(binding.clone(), pressed_keys.clone())),
             BindingAction::Channel(tx) | BindingAction::Magic(tx) => {
-                if let Err(error) = tx.send(TriggeredHotkey(binding.clone(), pressed_keys.clone())) {
+                if let Err(error) = tx.send(TriggeredHotkey(binding.clone(), pressed_keys.clone()))
+                {
                     println!("BROKEN PIPE: {:?}", error);
                 }
-            },
+            }
         }
     }
 }
 
 pub struct HotkeyManager {
     //bindings: VecDeque<HotkeyBinding>,
-    bindings_by_length: HashMap<usize, VecDeque<HotkeyBinding>>
+    bindings_by_length: HashMap<usize, VecDeque<HotkeyBinding>>,
 }
 pub(crate) trait Bindable {
     fn to_virtual_key(self) -> u32;
@@ -250,41 +262,56 @@ pub type PressedKeys = IndexSet<VIRTUAL_KEY>;
 
 impl Dump for PressedKeys {
     fn dump(&self) -> String {
-        self.iter().map(|item| { Key::VirtualKey(*item) }).collect::<Vec<_>>().dump()
+        self.iter()
+            .map(|item| Key::VirtualKey(*item))
+            .collect::<Vec<_>>()
+            .dump()
     }
 }
-
-
-
-
 
 impl HotkeyManager {
     pub fn new() -> Self {
         HotkeyManager {
             //bindings: VecDeque::new(),
-            bindings_by_length: HashMap::new()
+            bindings_by_length: HashMap::new(),
         }
     }
 
+    fn _add_binding(
+        &mut self,
+        keys: KeyBinding,
+        on_press: BindingAction,
+        on_release: BindingAction,
+        ordered: bool,
+    ) -> &HotkeyBinding {
+        let binding_length = keys.len();
+        let binding = HotkeyBinding {
+            keys,
+            on_press,
+            on_release,
+            ordered,
+            triggered: false,
+        };
+        //let link = &binding;
+        // Insert the new binding into the appropriate VecDeque based on its length
+        // If there's no entry for this length yet, create a new VecDeque
+        let bindings_for_length = self.bindings_by_length.entry(binding_length).or_default();
+        bindings_for_length.push_back(binding);
 
-
-    fn _add_binding(&mut self, keys: KeyBinding, on_press: BindingAction, on_release: BindingAction, ordered: bool) -> &HotkeyBinding {
-            let binding_length = keys.len();
-            let binding = HotkeyBinding { keys, on_press, on_release, ordered, triggered: false };
-            //let link = &binding;
-            // Insert the new binding into the appropriate VecDeque based on its length
-            // If there's no entry for this length yet, create a new VecDeque
-            let bindings_for_length = self.bindings_by_length.entry(binding_length).or_default();
-            bindings_for_length.push_back(binding);
-
-            return bindings_for_length.back().expect("WTF");
-        }
+        return bindings_for_length.back().expect("WTF");
+    }
 
     /*pub(crate) fn add_binding(&mut self, keys: KeyBinding, on_press: Callback, on_release:Callback, ordered: bool) -> &HotkeyBinding  {
         self._add_binding(keys, BindingAction::Callback(on_press),  BindingAction::Callback(on_release), ordered)
     }*/
 
-    pub(crate) fn add_magic_binding(&mut self, keys: KeyBinding,  on_press: Callback, on_release:Callback, ordered: bool) -> &HotkeyBinding {
+    pub(crate) fn add_magic_binding(
+        &mut self,
+        keys: KeyBinding,
+        on_press: Callback,
+        on_release: Callback,
+        ordered: bool,
+    ) -> &HotkeyBinding {
         let (on_press_tx, on_press_rx): (ChannelSender, ChannelReceiver) = mpsc::channel();
 
         let (on_release_tx, on_release_rx): (ChannelSender, ChannelReceiver) = mpsc::channel();
@@ -301,32 +328,51 @@ impl HotkeyManager {
                 on_release(data);
             }
         });
-        self._add_binding(keys, BindingAction::Magic(on_press_tx), BindingAction::Magic(on_release_tx), ordered)
+        self._add_binding(
+            keys,
+            BindingAction::Magic(on_press_tx),
+            BindingAction::Magic(on_release_tx),
+            ordered,
+        )
     }
 
-    pub fn add_channel_binding(&mut self, keys: KeyBinding) -> (ChannelReceiver,ChannelReceiver) {
+    pub fn add_channel_binding(&mut self, keys: KeyBinding) -> (ChannelReceiver, ChannelReceiver) {
         let (on_press_tx, on_press_rx) = mpsc::channel();
         let (on_release_tx, on_release_rx) = mpsc::channel();
-        self._add_binding(keys, BindingAction::Channel(on_press_tx), BindingAction::Channel(on_release_tx), false);
+        self._add_binding(
+            keys,
+            BindingAction::Channel(on_press_tx),
+            BindingAction::Channel(on_release_tx),
+            false,
+        );
         (on_press_rx, on_release_rx)
     }
-
 
     pub(crate) fn check_and_trigger(&mut self, metadata: &KeyboardHookMetadata) -> bool {
         let key = *metadata.key();
         if is_meta_or_alt(key) {
-            let activated = self.bindings_by_length.values()
+            let activated = self
+                .bindings_by_length
+                .values()
                 .flat_map(|bindings| bindings.iter()) // Iterate over all bindings in all VecDeques
                 .filter(|binding| binding.is_triggered()) // Keep only those bindings that are triggered
                 .cloned() // Clone the triggered bindings to create a Vec<HotkeyBinding>
                 .collect::<Vec<_>>(); // Collect the filtered and cloned bindings into a Vec
-            if !activated.iter().filter(|f| { f.keys.has_virtual_key_value(key) }).collect::<Vec<_>>().is_empty() {
+            if !activated
+                .iter()
+                .filter(|f| f.keys.has_virtual_key_value(key))
+                .collect::<Vec<_>>()
+                .is_empty()
+            {
                 if metadata.pressing() {
-                    println!("!!!!!!!!!!!!!!!! We have running shortcut ignoring {:?}", VirtualKey(key.clone()));
-                    return true
+                    println!(
+                        "!!!!!!!!!!!!!!!! We have running shortcut ignoring {:?}",
+                        VirtualKey(key.clone())
+                    );
+                    return true;
                 } else if metadata.releasing() && metadata.injected() {
                     println!("!!!!!!!!!!!!!!!! IGNORING INJECTED VALUE THAT WE ARE CURRENTLY PRESSING {:?}", VirtualKey(key));
-                    return true
+                    return true;
                 }
             }
         }
@@ -340,7 +386,7 @@ impl HotkeyManager {
             for binding in bindings.iter_mut() {
                 if binding.should_trigger(pressed_keys, &mut scancode_cache, &mut char_cache) {
                     println!("TRIGGERED");
-                    return binding.execute_binding_actions(metadata, pressed_keys)
+                    return binding.execute_binding_actions(metadata, pressed_keys);
                 }
             }
         }
@@ -348,11 +394,7 @@ impl HotkeyManager {
         false
     }
 
-
-
-
-
-/*    fn is_triggered(&self, pressed_keys: &HashSet<VIRTUAL_KEY>, binding: &HotkeyBinding) -> bool {
+    /*    fn is_triggered(&self, pressed_keys: &HashSet<VIRTUAL_KEY>, binding: &HotkeyBinding) -> bool {
         let result = if binding.ordered {
             binding.keys.iter().all(|f| {
                 pressed_keys.contains(&f.vk)

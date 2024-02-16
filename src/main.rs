@@ -1,27 +1,24 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::ptr;
-use std::str::FromStr;
-use std::sync::Arc;
-use ini::configparser::ini::Ini;
-use winapi::shared::minwindef::BYTE;
-use winapi::um::libloaderapi::GetModuleHandleW;
-use winapi::um::winuser::{COLOR_WINDOW, CreateWindowExW, CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, DispatchMessageW, GetMessageW, keybd_event, KEYEVENTF_KEYUP, MapVirtualKeyW, MAPVK_VSC_TO_VK, MSG, RegisterClassW, TranslateMessage, WNDCLASSW, WS_OVERLAPPEDWINDOW};
-use crate::hotkeymanager::{HasCharacter, HasShift, HasVirtualKey, HOTKEY_MANAGER_INSTANCE, HotkeyManager, Key, KeyBinding};
-use crate::keybindings::{bindings_from_map, CharBindingState, CharKeyBindings, Dump, KeyBindings};
-use crate::keymanager::KEY_MANAGER_INSTANCE;
-use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
-use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_MENU, VK_RMENU, VK_RSHIFT, VK_SHIFT};
-use crate::win::{char_to_vk_key_scan, load_preload_keyboard_layouts, ToScanCode, VIRTUAL_KEY};
-use crate::win::keyboard::{filter_modifier_keys, KeyAction, KeyStroke, KeyType, press_virtual_keys, release_virtual_keys, send_key_sequence, send_unicode_character};
 
-mod win;
-mod keymanager;
+use ini::configparser::ini::Ini;
+
+use crate::hotkeymanager::{HasCharacter, HasShift, Key, HOTKEY_MANAGER_INSTANCE};
+use crate::keybindings::{bindings_from_map, CharBindingState, Dump, KeyBindings};
+use winapi::um::libloaderapi::GetModuleHandleW;
+use winapi::um::winuser::{
+    CreateWindowExW, DispatchMessageW, GetMessageW, RegisterClassW, TranslateMessage, COLOR_WINDOW,
+    CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CW_USEDEFAULT, MSG, WNDCLASSW, WS_OVERLAPPEDWINDOW,
+};
+
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
+
+use crate::win::keyboard::{send_key_sequence, KeyAction, KeyStroke};
+
 mod hotkeymanager;
 mod keybindings;
-
-
-
-
+mod keymanager;
+mod win;
 
 fn main() {
     let mut conf = Ini::new();
@@ -29,9 +26,9 @@ fn main() {
     let bindings = bindings_from_map(the_conf);
 
     println!("Parsed keybindings: {}", bindings.dump());
-    let mut state: CharBindingState = HashMap::new();
+    let _state: CharBindingState = HashMap::new();
     bindings.into_iter().for_each(|(char_to_post, key_bindings)| {
-        let char_to_post_clone = char_to_post.clone();
+        let _char_to_post_clone = char_to_post.clone();
         //state.insert(char_to_post_clone, -1);
         key_bindings.into_iter().for_each(move |binding| {
             // Clone char_to_post to move a copy into the closure
@@ -39,7 +36,7 @@ fn main() {
             let char_to_post_clone = char_to_post.clone();
 
 
-            let the_binding = HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |triggered| {
+            let _the_binding = HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |triggered| {
                 println!("[ACTIVATION] Triggered {:?} on keypress.", triggered);
 
                 let mut pre_keys: Vec<KeyStroke> =  if triggered.0.triggered {
@@ -55,7 +52,7 @@ fn main() {
                 send_key_sequence(&pre_keys, &[char_keystroke], &[], false);
             }), Box::new(move |triggered| {
                 println!("[DEACTIVATION] Triggered {:?} on ňkeyrelease.", triggered);
-                let mut post_keys: Vec<KeyStroke> =  if triggered.0.triggered {
+                let post_keys: Vec<KeyStroke> =  if triggered.0.triggered {
                     Vec::new()
                 } else {
                     println!("[DEACTIVATION] Hotkey is still activated, releasing pressed keys: {:?}", triggered.1);
@@ -70,13 +67,14 @@ fn main() {
         });
     });
 
-
-
     create_window()
 }
 
-
-fn clone_with_modifier_if_needed(char_to_post: char, bindings: &KeyBindings, modifier: KNOWN_VIRTUAL_KEY) -> KeyBindings {
+fn clone_with_modifier_if_needed(
+    char_to_post: char,
+    bindings: &KeyBindings,
+    modifier: KNOWN_VIRTUAL_KEY,
+) -> KeyBindings {
     let mut created_bingdings = Vec::new();
 
     for binding in bindings {
@@ -90,11 +88,7 @@ fn clone_with_modifier_if_needed(char_to_post: char, bindings: &KeyBindings, mod
     created_bingdings
 }
 
-
 pub fn create_window() {
-
-
-
     // Register window class
     unsafe {
         let class_name = "MyWindowClass\0";
@@ -113,7 +107,10 @@ pub fn create_window() {
             class_name.as_ptr() as _,
             "My Window\0".as_ptr() as _,
             WS_OVERLAPPEDWINDOW,
-            CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            500,
+            400,
             ptr::null_mut(),
             ptr::null_mut(),
             GetModuleHandleW(ptr::null()),
@@ -121,17 +118,16 @@ pub fn create_window() {
         );
 
         /*        let hwnd2 = CreateWindowExW(
-                    0,
-                    class_name.as_ptr() as _,
-                    "My notification Window\0".as_ptr() as _,
-                    WS_OVERLAPPEDWINDOW,
-                    CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
-                    ptr::null_mut(),
-                    ptr::null_mut(),
-                    GetModuleHandleW(ptr::null()),
-                    ptr::null_mut(),
-                );*/
-
+            0,
+            class_name.as_ptr() as _,
+            "My notification Window\0".as_ptr() as _,
+            WS_OVERLAPPEDWINDOW,
+            CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            GetModuleHandleW(ptr::null()),
+            ptr::null_mut(),
+        );*/
 
         //ShowWindow(hwnd, SW_SHOWNORMAL);
         if hwnd.is_null() {
@@ -139,9 +135,9 @@ pub fn create_window() {
             return;
         }
         /* if hwnd2.is_null() {
-             println!("HWND2 is null, dying");
-             return;
-         }*/
+            println!("HWND2 is null, dying");
+            return;
+        }*/
 
         //load_preload_keyboard_layouts();
         // Message loop

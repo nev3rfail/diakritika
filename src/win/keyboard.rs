@@ -1,21 +1,24 @@
-use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
-use std::{ptr, thread};
-use winapi::um::winuser::{CallNextHookEx, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT, keybd_event, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED, MapVirtualKeyW, SendInput};
+use crate::hotkeymanager::Key::VirtualKey;
+use crate::hotkeymanager::PressedKeys;
 use crate::keymanager::KEY_MANAGER_INSTANCE;
-use crate::win::{HC_ACTION, KEYBOARD_HOOK, MessageType, ToChar, ToScanCode, ToUnicode, VIRTUAL_KEY};
+use crate::win::{ToChar, ToScanCode, ToUnicode, HC_ACTION, KEYBOARD_HOOK, VIRTUAL_KEY};
 use num_traits::FromPrimitive;
 use std::fmt::Debug;
+use std::fmt::Formatter;
 use std::time::Duration;
+use std::{ptr, thread};
 use winapi::shared::minwindef::{BYTE, DWORD, UINT};
-use crate::hotkeymanager::Key::VirtualKey;
-use crate::hotkeymanager::{KeyBinding, PressedKeys};
-use crate::keybindings::Dump;
+use winapi::um::winuser::{
+    keybd_event, CallNextHookEx, MapVirtualKeyW, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT,
+    KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED,
+};
+
 use crate::win::keyboard::KeyAction::Press;
 use crate::win::keyboard::KeyType::Classic;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
-use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_PACKET, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT};
-
+use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{
+    VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT,
+};
 
 pub const KEYSTROKE_MARKER: usize = 0x666;
 
@@ -37,7 +40,6 @@ impl Debug for KBDStructWrapper {
     }
 }
 
-
 pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: isize) -> isize {
     let handled = if n_code == HC_ACTION {
         if let Some(ev) = KEYBOARD_HOOK::from_u32(w_param as u32) {
@@ -45,21 +47,33 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
             // VK_PACKET is sent when someone sends unicode characters
             //if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
             if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
-            //if kbd_struct.vkCode == VK_PACKET as u32 {
-                println!("[!!!] IGNORE: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
+                //if kbd_struct.vkCode == VK_PACKET as u32 {
+                println!(
+                    "[!!!] IGNORE: {:?} -- {:?}",
+                    ev,
+                    KBDStructWrapper(kbd_struct)
+                );
                 None
-            } /*else if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
+            }
+            /*else if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
                 println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
                 Some(1)
             }*/
             /*else if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
             println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
             Some(1)*/
-         else {
+            else {
                 match ev {
                     KEYBOARD_HOOK::WM_KEYDOWN | KEYBOARD_HOOK::WM_SYSKEYDOWN => {
-                        println!("[!!!] dďďďďďďďďďďďďďďďďďďďďďdddddddddddďďpress: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-                        let result = &KEY_MANAGER_INSTANCE.write().keydown(kbd_struct.vkCode as _, kbd_struct.flags & LLKHF_INJECTED != 0);
+                        println!(
+                            "[!!!] dďďďďďďďďďďďďďďďďďďďďďdddddddddddďďpress: {:?} -- {:?}",
+                            ev,
+                            KBDStructWrapper(kbd_struct)
+                        );
+                        let result = &KEY_MANAGER_INSTANCE.write().keydown(
+                            kbd_struct.vkCode as _,
+                            kbd_struct.flags & LLKHF_INJECTED != 0,
+                        );
                         if *result == true {
                             //println!("IT FUKKEN WORKED?");
                             Some(1)
@@ -68,8 +82,15 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                         }
                     }
                     KEYBOARD_HOOK::WM_KEYUP | KEYBOARD_HOOK::WM_SYSKEYUP => {
-                        println!("[!!!] release: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-                        let result = &KEY_MANAGER_INSTANCE.write().keyup(kbd_struct.vkCode as _, kbd_struct.flags & LLKHF_INJECTED != 0);
+                        println!(
+                            "[!!!] release: {:?} -- {:?}",
+                            ev,
+                            KBDStructWrapper(kbd_struct)
+                        );
+                        let result = &KEY_MANAGER_INSTANCE.write().keyup(
+                            kbd_struct.vkCode as _,
+                            kbd_struct.flags & LLKHF_INJECTED != 0,
+                        );
                         if *result == true {
                             //println!("IT FUKKEN WORKED?");
                             Some(1)
@@ -77,8 +98,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                             None
                         }
                         //None
-                    }
-                    //_ => {}
+                    } //_ => {}
                 }
             }
             //None//Some(1)
@@ -94,9 +114,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
             //println!("[KBD] aNo one handled message, redirecting to the next hook :(");
             unsafe { CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param) }
         }
-        Some(res) => {
-            res
-        }
+        Some(res) => res,
     };
 }
 
@@ -121,12 +139,23 @@ pub fn press_virtual_keys(keys: PressedKeys) {
     }
 }
 
-pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item=&'a KeyStroke> + Clone>(keys: T) {
+pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item = &'a KeyStroke> + Clone>(
+    keys: T,
+) {
     for stroke in keys {
         println!("{:?}", stroke);
         if stroke.key_type == Classic {
             unsafe {
-                keybd_event(stroke.virtual_key as BYTE, stroke.scancode as BYTE, if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 }, KEYSTROKE_MARKER);
+                keybd_event(
+                    stroke.virtual_key as BYTE,
+                    stroke.scancode as BYTE,
+                    if stroke.action == KeyAction::Release {
+                        KEYEVENTF_KEYUP
+                    } else {
+                        0
+                    },
+                    KEYSTROKE_MARKER,
+                );
             }
         } else {
             send_keystrokes(&[*stroke]);
@@ -166,25 +195,30 @@ pub fn send_unicode_character(ch: char) {
     unsafe {
         *inputs[0].u.ki_mut() = ki_press; // Press event
         *inputs[1].u.ki_mut() = ki_release; // Release event
-        SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+        SendInput(
+            inputs.len() as UINT,
+            inputs.as_mut_ptr(),
+            std::mem::size_of::<INPUT>() as i32,
+        );
     }
 }
 
 pub fn filter_modifier_keys(vk_list: &PressedKeys) -> Vec<VIRTUAL_KEY> {
     // Define a list of modifier keys
     let modifiers: Vec<VIRTUAL_KEY> = vec![
-        VK_SHIFT as u32, // VK_SHIFT
+        VK_SHIFT as u32,  // VK_SHIFT
         VK_LSHIFT as u32, // VK_LSHIFT
         VK_RSHIFT as u32, // VK_RSHIFT
-        VK_MENU as u32, // VK_MENU (Alt)
-        VK_LMENU as u32, // VK_LMENU (LAlt)
-        VK_RMENU as u32, // VK_RMENU (RAlt)
-        VK_LWIN as u32, // VK_LWIN
-        VK_RWIN as u32, // VK_RWIN
+        VK_MENU as u32,   // VK_MENU (Alt)
+        VK_LMENU as u32,  // VK_LMENU (LAlt)
+        VK_RMENU as u32,  // VK_RMENU (RAlt)
+        VK_LWIN as u32,   // VK_LWIN
+        VK_RWIN as u32,   // VK_RWIN
     ];
 
     // Filter the input list to include only the modifier keys
-    vk_list.iter()
+    vk_list
+        .iter()
         .cloned()
         .filter(|vk| modifiers.contains(vk))
         .collect()
@@ -194,7 +228,7 @@ pub fn filter_modifier_keys(vk_list: &PressedKeys) -> Vec<VIRTUAL_KEY> {
 pub(crate) struct KeyStroke {
     key_type: KeyType,
     virtual_key: u32, // Use for ScanCode and Unicode as character code
-    scancode: u32, // Use for ScanCode and Unicode as character code
+    scancode: u32,    // Use for ScanCode and Unicode as character code
     action: KeyAction,
 }
 
@@ -206,10 +240,20 @@ pub(crate) struct KeyStroke {
 
 impl Debug for KeyStroke {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}] {:?} {:?} key 0x{:x}", if self.action == Press { "Pressing"} else {"Releasing"}, self.key_type, VirtualKey(self.virtual_key), self.scancode)
+        write!(
+            f,
+            "[{}] {:?} {:?} key 0x{:x}",
+            if self.action == Press {
+                "Pressing"
+            } else {
+                "Releasing"
+            },
+            self.key_type,
+            VirtualKey(self.virtual_key),
+            self.scancode
+        )
     }
 }
-
 
 impl KeyStroke {
     pub fn classic(virtual_key: VIRTUAL_KEY, action: KeyAction) -> Self {
@@ -217,7 +261,7 @@ impl KeyStroke {
             key_type: KeyType::Classic,
             virtual_key,
             scancode: virtual_key.to_code(),
-            action
+            action,
         }
     }
 
@@ -226,7 +270,7 @@ impl KeyStroke {
             key_type: KeyType::Unicode,
             virtual_key: 0,
             scancode: char as u32,
-            action
+            action,
         }
     }
 }
@@ -237,7 +281,7 @@ pub enum KeyType {
     Classic,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, )]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum KeyAction {
     Press,
     Release,
@@ -260,7 +304,7 @@ impl KeyStroke {
         return pew;
     }
 
-    pub(crate) fn clone_as_release(mut self) -> KeyStroke {
+    pub(crate) fn clone_as_release(self) -> KeyStroke {
         let mut pew = self.clone();
         pew.action = KeyAction::Release;
         return pew;
@@ -268,27 +312,46 @@ impl KeyStroke {
 }
 
 fn send_keystrokes_(keys: &[KeyStroke]) {
-
     if !keys.is_empty() {
         unsafe {
-            let mut inputs = keys.iter().map(|&key| create_input(key)).collect::<Vec<_>>();
-            SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+            let mut inputs = keys
+                .iter()
+                .map(|&key| create_input(key))
+                .collect::<Vec<_>>();
+            SendInput(
+                inputs.len() as UINT,
+                inputs.as_mut_ptr(),
+                std::mem::size_of::<INPUT>() as i32,
+            );
         }
     }
 }
 
-fn send_keystrokes<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item=&'a KeyStroke> + Clone>(keys: T) {
+fn send_keystrokes<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item = &'a KeyStroke> + Clone>(
+    keys: T,
+) {
     let iter_count = keys.clone().into_iter().count();
     if iter_count > 0 {
         unsafe {
-            let mut inputs = keys.into_iter().map(|&key| create_input(key)).collect::<Vec<_>>();
-            SendInput(inputs.len() as UINT, inputs.as_mut_ptr(), std::mem::size_of::<INPUT>() as i32);
+            let mut inputs = keys
+                .into_iter()
+                .map(|&key| create_input(key))
+                .collect::<Vec<_>>();
+            SendInput(
+                inputs.len() as UINT,
+                inputs.as_mut_ptr(),
+                std::mem::size_of::<INPUT>() as i32,
+            );
         }
     }
 }
 
-
-pub fn send_key_sequence(pre_keys: &[KeyStroke], the_char: &[KeyStroke], post_keys: &[KeyStroke], split: bool) {
+pub fn send_key_sequence(
+    pre_keys: &[KeyStroke],
+    the_char: &[KeyStroke],
+    post_keys: &[KeyStroke],
+    split: bool,
+) {
     if split {
         send_keystrokes(pre_keys);
         thread::sleep(Duration::from_millis(100));
@@ -319,22 +382,32 @@ fn create_input(stroke: KeyStroke) -> INPUT {
         let ki = match stroke.key_type {
             KeyType::Unicode => {
                 KEYBDINPUT {
-                    wVk: 0, // Virtual-key code is not needed for Unicode input
+                    wVk: 0,                        // Virtual-key code is not needed for Unicode input
                     wScan: stroke.scancode as u16, // Unicode character code
-                    dwFlags: KEYEVENTF_UNICODE | if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 },
+                    dwFlags: KEYEVENTF_UNICODE
+                        | if stroke.action == KeyAction::Release {
+                            KEYEVENTF_KEYUP
+                        } else {
+                            0
+                        },
                     time: 0,
                     dwExtraInfo: KEYSTROKE_MARKER,
                 }
-            },
+            }
             KeyType::Classic => {
                 KEYBDINPUT {
-                    wVk: 0, // Virtual-key code is not needed for scancode input
+                    wVk: 0,                        // Virtual-key code is not needed for scancode input
                     wScan: stroke.scancode as u16, // Scancode
-                    dwFlags: KEYEVENTF_SCANCODE | if stroke.action == KeyAction::Release { KEYEVENTF_KEYUP } else { 0 },
+                    dwFlags: KEYEVENTF_SCANCODE
+                        | if stroke.action == KeyAction::Release {
+                            KEYEVENTF_KEYUP
+                        } else {
+                            0
+                        },
                     time: 0,
                     dwExtraInfo: KEYSTROKE_MARKER,
                 }
-            },
+            }
         };
 
         *input.u.ki_mut() = ki;
