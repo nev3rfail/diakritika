@@ -75,6 +75,7 @@ ALT+'
 ### TODO:
 * Add logging with `log` instead of prints
 * Clean up mixed Debug and Display traits for structures
+* Remove unneeded `winapi` features
 * Resolve conflicts and don't add conflicting declarations
 * Hot reload of last good configuration. Inotify / etc?
 * Auto-add program to system startup with admin rights (without admin access the software can't control administrator's applications which is a shame)
