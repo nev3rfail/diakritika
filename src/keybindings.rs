@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, HashMap};
 
 use std::iter::once_with;
+use crate::r#static;
 
-use crate::clone_with_modifier_if_needed;
-use crate::hotkeymanager::{Key, KeyBinding};
+use crate::r#type::Dump;
+use crate::r#type::hotkeymanager::{Key, KeyBinding, HasCharacter, HasShift, CharKeyBindings, KeyBindings};
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{
     VK_CONTROL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RMENU,
@@ -28,33 +29,6 @@ fn parse_binding(binding_str: &str) -> KeyBinding {
         })
         .collect()
 }
-pub type KeyBindings = Vec<KeyBinding>;
-pub type CharKeyBindings = BTreeMap<BindingChar, KeyBindings>;
-
-pub type BindingChar = char;
-pub type CharBindingState<'a> = HashMap<&'a BindingChar, i32>;
-
-pub trait Dump {
-    fn dump(&self) -> String;
-}
-
-impl Dump for CharKeyBindings {
-    fn dump(&self) -> String {
-        self.iter()
-            .map(|(char, binding)| format!("{}:\n{}\n", char, binding.dump()))
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-}
-
-impl Dump for KeyBindings {
-    fn dump(&self) -> String {
-        self.iter()
-            .map(|binding| binding.dump())
-            .collect::<Vec<_>>()
-            .join("\n")
-    }
-}
 
 /// Read bindings from map. If map value is empty, then
 pub(crate) fn bindings_from_map(
@@ -66,9 +40,9 @@ pub(crate) fn bindings_from_map(
         let char_to_post: char = section.parse().expect(&format!("Can't parse {section}"));
 
         prop.iter().for_each(|(key, value)| {
-            let mut binding = parse_binding(key);
+            let binding = parse_binding(key);
             let capitalize = value.is_none();
-            let ex = expand_modifiers(&mut binding);
+            let ex = expand_modifiers(&binding);
             let upper = if capitalize {
                 let cap = clone_with_modifier_if_needed(char_to_post, &ex, VK_SHIFT);
                 if !cap.is_empty() {
@@ -102,10 +76,7 @@ pub(crate) fn bindings_from_map(
     bindings
 }
 
-const CONST_VK_SHIFT: u32 = VK_SHIFT as u32;
-const CONST_VK_MENU: u32 = VK_MENU as u32;
-const CONST_VK_CONTROL: u32 = VK_CONTROL as u32;
-const CONST_VK_WIN: u32 = VK_LWIN as u32;
+
 
 fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
     let mut expanded_bindings: Vec<KeyBinding> = vec![binding.clone()]; // Start with the original binding
@@ -113,9 +84,9 @@ fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
     for (i, key) in binding.iter().enumerate() {
         if let Key::VirtualKey(vk) = key {
             let (left, right) = match vk {
-                &CONST_VK_SHIFT => (VK_LSHIFT as u32, VK_RSHIFT as u32),
-                &CONST_VK_MENU => (VK_LMENU as u32, VK_RMENU as u32),
-                &CONST_VK_CONTROL => (VK_LCONTROL as u32, VK_RCONTROL as u32),
+                &r#static::CONST_VK_SHIFT => (VK_LSHIFT as u32, VK_RSHIFT as u32),
+                &r#static::CONST_VK_MENU => (VK_LMENU as u32, VK_RMENU as u32),
+                &r#static::CONST_VK_CONTROL => (VK_LCONTROL as u32, VK_RCONTROL as u32),
                 //VK_WIN => (VK_LWIN as u32, VK_RWIN as u32),
                 _ => continue,
             };
@@ -138,3 +109,22 @@ fn expand_modifiers(binding: &KeyBinding) -> Vec<KeyBinding> {
 
     expanded_bindings
 }
+
+fn clone_with_modifier_if_needed(
+    char_to_post: char,
+    bindings: &KeyBindings,
+    modifier: KNOWN_VIRTUAL_KEY,
+) -> KeyBindings {
+    let mut created_bingdings = Vec::new();
+
+    for binding in bindings {
+        if binding.has_character() && !binding.has_shift() && char_to_post.is_lowercase() {
+            let mut modified_binding = binding.clone();
+            modified_binding.insert(0, Key::VirtualKey(modifier as u32)); // Or VK_LSHIFT, if preferred
+            created_bingdings.push(modified_binding);
+        }
+    }
+
+    created_bingdings
+}
+

@@ -1,42 +1,44 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use std::fmt::{Debug, Formatter};
 
 use indexmap::IndexSet;
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
 use std::thread;
 
-use once_cell::sync::Lazy;
-
-use crate::hotkeymanager::Key::VirtualKey;
-use crate::keybindings::Dump;
-use crate::keymanager::{KeyboardHookMetadata, KEY_MANAGER_INSTANCE};
+use crate::r#type::Dump;
+use crate::r#type::hotkeymanager::Key::VirtualKey;
+use crate::r#type::keyboardhook::{KeyboardHookMetadata};
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LSHIFT, VK_RSHIFT, VK_SHIFT};
 use crate::win::{is_meta_or_alt, ToScanCode, ToUnicode, VIRTUAL_KEY};
 
-/*pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> = Lazy::new(|| {
-    Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
-});
-*/
-pub static HOTKEY_MANAGER_INSTANCE: Lazy<Arc<parking_lot::Mutex<HotkeyManager>>> =
-    Lazy::new(|| {
-        let hotkey_manager = Arc::new(parking_lot::Mutex::new(HotkeyManager::new()));
 
-        KEY_MANAGER_INSTANCE.write().add_hook(
-            |metadata, hotkey_manager| {
-                let s = metadata
-                    .as_any()
-                    .downcast_ref::<KeyboardHookMetadata>()
-                    .expect("Failed to downcast metadata as keyboard hook.");
-                Ok(hotkey_manager.lock_arc().check_and_trigger(s))
-            },
-            hotkey_manager.clone(),
-        );
+pub type KeyBindings = Vec<KeyBinding>;
+pub type CharKeyBindings = BTreeMap<BindingChar, KeyBindings>;
 
-        hotkey_manager
-    });
+pub type BindingChar = char;
+pub type CharBindingState<'a> = HashMap<&'a BindingChar, i32>;
+
+
+impl Dump for CharKeyBindings {
+    fn dump(&self) -> String {
+        self.iter()
+            .map(|(char, binding)| format!("{}:\n{}\n", char, binding.dump()))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
+impl Dump for KeyBindings {
+    fn dump(&self) -> String {
+        self.iter()
+            .map(|binding| binding.dump())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+}
+
 
 #[derive(Clone)]
 pub enum Key {
@@ -72,9 +74,6 @@ impl Dump for KeyBinding {
     }
 }
 
-/*trait SafeBoxedTriggeredHotkey: Fn(TriggeredHotkey) + Send + Sync + Clone {
-
-}*/
 
 type Callback = Box<dyn Fn(TriggeredHotkey) + Send + Sync>;
 type ChannelSender = Sender<TriggeredHotkey>;
@@ -248,6 +247,7 @@ pub struct HotkeyManager {
     //bindings: VecDeque<HotkeyBinding>,
     bindings_by_length: HashMap<usize, VecDeque<HotkeyBinding>>,
 }
+
 pub(crate) trait Bindable {
     fn to_virtual_key(self) -> u32;
 }

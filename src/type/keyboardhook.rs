@@ -1,57 +1,19 @@
 use std::any::Any;
+use anyhow::Error;
+use crate::r#type::hook::{HookContainer, HookMetadata};
+use crate::win::VIRTUAL_KEY;
+
+
+use indexmap::IndexSet;
 
 use once_cell::sync::Lazy;
 
 use parking_lot::RwLock;
-
-pub static KEY_MANAGER_INSTANCE: Lazy<RwLock<KeyManager>> =
-    Lazy::new(|| RwLock::new(KeyManager::with_storage(IndexSet::with_capacity(20))));
+use crate::r#type::hotkeymanager::Key::VirtualKey;
+use crate::r#type::hotkeymanager::PressedKeys;
 
 pub struct KeyManager(PressedKeys, Vec<HookContainer>);
 
-use anyhow::Error;
-use indexmap::IndexSet;
-use std::ops::Fn;
-
-use crate::hotkeymanager::Key::VirtualKey;
-use crate::hotkeymanager::PressedKeys;
-use crate::win::VIRTUAL_KEY;
-
-trait Hook: Any + Send + Sync {
-    fn call(&self, extra: &dyn HookMetadata) -> Result<bool, anyhow::Error>;
-}
-
-impl<F, T> Hook for (F, T)
-where
-    F: Fn(&dyn HookMetadata, &T) -> Result<bool, anyhow::Error> + 'static + Send + Sync,
-    T: 'static + Send + Sync,
-{
-    fn call(&self, extra: &dyn HookMetadata) -> Result<bool, anyhow::Error> {
-        (self.0)(extra, &self.1)
-    }
-}
-
-struct HookContainer {
-    hook: Box<dyn Hook>,
-}
-impl HookContainer {
-    fn new<F, T>(hook: F, arg: T) -> Self
-    where
-        F: Fn(&dyn HookMetadata, &T) -> Result<bool, anyhow::Error> + 'static + Send + Sync,
-        T: 'static + Send + Sync,
-    {
-        HookContainer {
-            hook: Box::new((hook, arg)),
-        }
-    }
-
-    fn trigger(&self, extra: &dyn HookMetadata) -> Result<bool, Error> {
-        self.hook.call(extra)
-    }
-}
-pub trait HookMetadata: Any + Send + Sync {
-    fn as_any(&self) -> &dyn Any;
-}
 
 pub enum KeyboardHookMetadata {
     Press {
@@ -113,11 +75,6 @@ impl KeyboardHookMetadata {
     }
 }
 
-enum ControlFlow {
-    KeepGoing,
-    BreakLocal,
-    BreakGlobal,
-}
 impl KeyManager {
     pub(crate) fn with_storage(storage: PressedKeys) -> Self {
         Self(storage, Vec::new())
@@ -194,12 +151,10 @@ impl KeyManager {
     pub fn add_hook<F, T>(&mut self, callback: F, arg: T)
     //{
     //fn new<F, T>(callback: F, arg: T) -> Self
-    where
-        F: Fn(&dyn HookMetadata, &T) -> Result<bool, Error> + 'static + Send + Sync,
-        T: 'static + Send + Sync,
+        where
+            F: Fn(&dyn HookMetadata, &T) -> Result<bool, Error> + 'static + Send + Sync,
+            T: 'static + Send + Sync,
     {
-        self.1.push(HookContainer {
-            hook: Box::new((callback, arg)),
-        });
+        self.1.push(HookContainer::new(callback, arg));
     }
 }

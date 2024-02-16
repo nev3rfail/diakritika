@@ -60,17 +60,6 @@ impl From<VIRTUAL_KEY> for VirtualKeyEx {
     }
 }
 
-/*impl Debug for Result<KNOWN_VIRTUAL_KEY, UnknownVirtualKey> {
-
-    fn dump(&self) -> String {
-        todo!()
-    }
-
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}*/
-
 impl TryFrom<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
     type Error = UnknownVirtualKey;
 
@@ -82,15 +71,12 @@ impl TryFrom<VIRTUAL_KEY> for KNOWN_VIRTUAL_KEY {
 impl KNOWN_VIRTUAL_KEY {
     pub(crate) fn from_human(human_readable: &str) -> Result<Self, anyhow::Error> {
         let mut machine = "VK_".to_owned();
-        machine.extend(
-            human_readable
+        machine.push_str(&human_readable
                 .replace("alt", "menu")
                 .replace("meta", "win")
                 .replace("mod4", "win")
                 .to_uppercase()
-                .to_owned()
-                .chars(),
-        );
+                .to_owned());
         Ok(Self::from_str(&machine)?)
     }
 }
