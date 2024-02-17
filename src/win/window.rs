@@ -2,7 +2,6 @@ use crate::win::keyboard::keyboard_hook_proc;
 use crate::win::{get_last_error_message, MessageType};
 use std::ptr;
 use winapi::shared::windef::HWND;
-use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::libloaderapi::GetModuleHandleW;
 use winapi::um::winuser::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, RegisterClassW,

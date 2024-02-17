@@ -9,8 +9,7 @@ use crate::r#type::hotkeymanager::{
 
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{
-    VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_RCONTROL, VK_RMENU,
-    VK_RSHIFT, VK_SHIFT,
+    VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_RCONTROL, VK_RMENU, VK_RSHIFT, VK_SHIFT,
 };
 
 /// Parse binding that looks like lshift+alt+b+0x18
@@ -59,16 +58,24 @@ pub(crate) fn bindings_from_map(
             if upper.is_some() {
                 let upper = once_with(|| {
                     let mut new = Vec::new();
-                    upper.expect("Failed to get upper variants").iter().for_each(|item| {
-                        let ex = expand_modifiers(item);
-                        new.extend(ex)
-                    });
+                    upper
+                        .expect("Failed to get upper variants")
+                        .iter()
+                        .for_each(|item| {
+                            let ex = expand_modifiers(item);
+                            new.extend(ex)
+                        });
                     new
                 })
                 .next()
                 .expect("OnceWith broke");
                 bindings
-                    .entry(char_to_post.to_uppercase().next().expect(&*format!("Failed to get uppercase from {}", &char_to_post)))
+                    .entry(
+                        char_to_post
+                            .to_uppercase()
+                            .next()
+                            .expect(&*format!("Failed to get uppercase from {}", &char_to_post)),
+                    )
                     .or_default()
                     .extend(upper);
             }

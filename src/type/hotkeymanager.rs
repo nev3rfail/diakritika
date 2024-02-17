@@ -3,9 +3,9 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt::{Debug, Formatter};
 
 use indexmap::IndexSet;
+use log::log;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
-use log::log;
 
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::keyboardhook::KeyboardHookMetadata;
@@ -293,7 +293,9 @@ impl HotkeyManager {
         let bindings_for_length = self.bindings_by_length.entry(binding_length).or_default();
         bindings_for_length.push_back(binding);
 
-        return bindings_for_length.back().expect("Can't add binding to the pile");
+        return bindings_for_length
+            .back()
+            .expect("Can't add binding to the pile");
     }
 
     /*pub(crate) fn add_binding(&mut self, keys: KeyBinding, on_press: Callback, on_release:Callback, ordered: bool) -> &HotkeyBinding  {

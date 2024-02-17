@@ -6,11 +6,11 @@ use num_traits::FromPrimitive;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 
-use std::{ptr};
+use std::ptr;
 use winapi::shared::minwindef::{BYTE, DWORD, UINT};
 use winapi::um::winuser::{
-    keybd_event, CallNextHookEx, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT,
-    KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED,
+    keybd_event, CallNextHookEx, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT, KEYBDINPUT,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED,
 };
 
 use crate::win::keyboard::KeyAction::Press;
@@ -39,7 +39,6 @@ impl Debug for KBDStructWrapper {
         write!(f, "KBDLLHOOKSTRUCT[{}] vk: {} | {:?}, scan: {}, flags: {}, time: {}, extra: {} | char [{}|{}] | unicode [{:?}|{:?}]", if self.is_injected(){ "injected" } else { "raw" },self.0.vkCode, KNOWN_VIRTUAL_KEY::try_from(self.0.vkCode), self.0.scanCode, self.0.flags, self.0.time, self.0.dwExtraInfo, self.0.vkCode.to_char(), self.0.vkCode.to_char_localized(), self.0.vkCode.to_unicode(), self.0.vkCode.to_unicode_localized())
     }
 }
-
 
 pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: isize) -> isize {
     let handled = if n_code == HC_ACTION {

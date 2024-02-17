@@ -6,7 +6,6 @@ use std::any::Any;
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::hotkeymanager::PressedKeys;
 
-
 pub struct KeyManager(PressedKeys, Vec<HookContainer>);
 
 pub enum KeyboardHookMetadata {
