@@ -84,7 +84,9 @@ ALT+'
 * [ ] Resolve conflicts and don't add conflicting bindings
 * [ ] Hot reload of last good configuration. Inotify / etc?
 * [ ] Auto-add program to system startup with admin rights (without admin access the software can't control administrator's applications which is a shame)
-* [ ] GitHub CI because manually generation builds is pain
+* [x] GitHub CI because manually generating builds is pain
 * [ ] Add support of different things instead of typing letters? for example, running scripts
 * [ ] I still don't quite like how program handles repeating characters with alt key pressed. and especially with altGr. It works and works great, but not perfect
 * [ ] Flexible hotkey rules. For example, make hotkey strictly ordered, or withold keyboard events from being sent until the hotkey is complete
+* [ ] Disable application console window and make a tray icon
+* [ ] More examples for different european languages (if you'd like to contribute a hotkey list for your language feel free to open an issue)
