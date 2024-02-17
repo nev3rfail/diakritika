@@ -36,7 +36,13 @@ fn test_flag(what: DWORD, flag: DWORD) -> bool {
 
 impl Debug for KBDStructWrapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "KBDLLHOOKSTRUCT[{}] vk: {} | {:?}, scan: {}, flags: {}, time: {}, extra: {} | char [{}|{}] | unicode [{:?}|{:?}]", if self.is_injected(){ "injected" } else { "raw" },self.0.vkCode, KNOWN_VIRTUAL_KEY::try_from(self.0.vkCode), self.0.scanCode, self.0.flags, self.0.time, self.0.dwExtraInfo, self.0.vkCode.to_char(), self.0.vkCode.to_char_localized(), self.0.vkCode.to_unicode(), self.0.vkCode.to_unicode_localized())
+        write!(f, "KBDLLHOOKSTRUCT[{}] vk: {} | {:?}, scan: 0x{:x} ({}), flags: {}, time: {}, extra: {} | char [{}|{}] | unicode [{:?}|{:?}]", if self.is_injected(){ "injected" } else { "raw" },self.0.vkCode, KNOWN_VIRTUAL_KEY::try_from(self.0.vkCode), self.0.scanCode, self.0.scanCode, self.0.flags, self.0.time, self.0.dwExtraInfo, match self.0.vkCode.to_char() {
+            '\x1b' => "ESC".to_string(),
+            char => char.to_string()
+        }, match self.0.vkCode.to_char_localized() {
+            '\x1b' => "ESC".to_string(),
+            char => char.to_string()
+        }, self.0.vkCode.to_unicode(), self.0.vkCode.to_unicode_localized())
     }
 }
 
