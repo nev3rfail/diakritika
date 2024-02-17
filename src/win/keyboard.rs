@@ -7,11 +7,13 @@ use std::fmt::Debug;
 use std::fmt::Formatter;
 
 use std::ptr;
+use log::Level;
 use winapi::shared::minwindef::{BYTE, DWORD, UINT};
 use winapi::um::winuser::{
     keybd_event, CallNextHookEx, SendInput, INPUT, INPUT_KEYBOARD, KBDLLHOOKSTRUCT, KEYBDINPUT,
     KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, KEYEVENTF_UNICODE, LLKHF_INJECTED,
 };
+use crate::util::{default_logger, ProfilerFactory};
 
 use crate::win::keyboard::KeyAction::Press;
 use crate::win::keyboard::KeyType::Classic;
@@ -46,8 +48,11 @@ impl Debug for KBDStructWrapper {
     }
 }
 
+const PROFILER: ProfilerFactory = ProfilerFactory::static_new("Lowlevel keyboard hook", default_logger(Level::Debug));
+//const PROFILER: ProfilerFactory = ProfilerFactory::static_new("Lowlevel keyboard hook", |txt|println!("!!! TIMER {}", txt));
 pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: isize) -> isize {
     let handled = if n_code == HC_ACTION {
+    PROFILER.dispense("keyboard_hook_proc execution").r#do(|prof|{
         if let Some(ev) = KEYBOARD_HOOK::from_u32(w_param as u32) {
             let kbd_struct = unsafe { *(l_param as *const KBDLLHOOKSTRUCT) };
             /// We intercept the keystrokes from the blacklist
@@ -69,17 +74,19 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
             } else {
                 match ev {
                     KEYBOARD_HOOK::WM_KEYDOWN | KEYBOARD_HOOK::WM_SYSKEYDOWN => {
-                        log::trace!(target: "keyboard_hook_proc",
+                        log::debug!(
                             "key_press: {:?}: {:?}",
                             ev,
                             KBDStructWrapper(kbd_struct)
                         );
-                        let result = &KEY_MANAGER_INSTANCE.write().keydown(
-                            kbd_struct.vkCode as _,
-                            kbd_struct.flags & LLKHF_INJECTED != 0,
-                            KBDStructWrapper(kbd_struct)
-                        );
-                        if *result {
+                        let result = PROFILER.oneshot("keydown",|profiler| {
+                             KEY_MANAGER_INSTANCE.write().keydown(
+                                kbd_struct.vkCode as _,
+                                kbd_struct.flags & LLKHF_INJECTED != 0,
+                                KBDStructWrapper(kbd_struct),
+                            )
+                        });
+                        if result {
                             Some(1)
                         } else {
                             None
@@ -91,12 +98,15 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                             ev,
                             KBDStructWrapper(kbd_struct)
                         );
-                        let result = &KEY_MANAGER_INSTANCE.write().keyup(
-                            kbd_struct.vkCode as _,
-                            kbd_struct.flags & LLKHF_INJECTED != 0,
-                            KBDStructWrapper(kbd_struct)
-                        );
-                        if *result {
+                        let result = PROFILER.oneshot("keyup", |prof| {
+                            KEY_MANAGER_INSTANCE.write().keyup(
+                                kbd_struct.vkCode as _,
+                                kbd_struct.flags & LLKHF_INJECTED != 0,
+                                KBDStructWrapper(kbd_struct)
+                            )
+                        });
+
+                        if result {
                             Some(1)
                         } else {
                             None
@@ -107,6 +117,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
         } else {
             None
         }
+    })
     } else {
         None
     };
@@ -115,8 +126,9 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
         None => unsafe { CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param) },
         Some(res) => res,
     }
-}
 
+}
+//ópopo
 pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item = &'a KeyStroke> + Clone>(
     keys: T,
 ) {

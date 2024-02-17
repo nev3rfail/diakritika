@@ -320,18 +320,22 @@ impl HotkeyManager {
 
         let (on_release_tx, on_release_rx): (ChannelSender, ChannelReceiver) = mpsc::channel();
 
-        thread::spawn(move || {
-            for data in on_press_rx {
-                log::trace!(target: "MagicBinding", "[keypress] received new data");
-                on_press(data);
-            }
-        });
-        thread::spawn(move || {
-            for data in on_release_rx {
-                log::trace!(target: "MagicBinding", "[keyrelease] received new data");
-                on_release(data);
-            }
-        });
+        std::thread::Builder::new()
+            .name("hotkey::press".to_string())
+            .spawn(move || {
+                for data in on_press_rx {
+                    log::trace!(target: "MagicBinding", "[keypress] received new data");
+                    on_press(data);
+                }
+            }).unwrap_or_else(|e|panic!("Thread hotkey::release failed. {:?}", e));
+        std::thread::Builder::new()
+            .name("hotkey::release".to_string())
+            .spawn(move || {
+                for data in on_release_rx {
+                    log::trace!(target: "MagicBinding", "[keyrelease] received new data");
+                    on_release(data);
+                }
+            }).unwrap_or_else(|e|panic!("Thread hotkey::release failed. {:?}", e));
         self._add_binding(
             keys,
             BindingAction::Magic(on_press_tx),

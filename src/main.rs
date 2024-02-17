@@ -21,7 +21,7 @@ mod win;
 mod util;
 
 fn main() {
-    SimpleLogger::new().init().expect("Can't load logger.");
+    SimpleLogger::new().with_threads(true).init().expect("Can't load logger.");
 
     let args: Vec<String> = env::args().collect();
 
@@ -30,7 +30,7 @@ fn main() {
         2 => LevelFilter::from_str(&args[1]).unwrap_or(LevelFilter::Error),
         _ => LevelFilter::from_str(&args[1]).unwrap_or(LevelFilter::Trace),
     };
-    println!("Verbosity: {}", level);
+    println!("Current log level: {}", level);
     log::set_max_level(level);
 
     let mut conf = Ini::new();
