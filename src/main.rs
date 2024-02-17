@@ -18,6 +18,7 @@ mod keybindings;
 mod r#static;
 mod r#type;
 mod win;
+mod util;
 
 fn main() {
     SimpleLogger::new().init().expect("Can't load logger.");
@@ -42,13 +43,14 @@ fn main() {
             let char_to_post_clone = char_to_post.clone();
 
             let _the_binding = HOTKEY_MANAGER_INSTANCE.lock_arc().add_magic_binding(binding, Box::new(move |triggered| {
-                let target= "[ACTIVATION]";
-                log::debug!(target: target, "Triggered {:?} on keypress.", triggered);
+                let target= "[main::hotkey_activation]";
+                log::debug!( target: target, "Triggered {:?} on keypress.", triggered);
 
                 let mut pre_keys: Vec<KeyStroke> =  if triggered.0.triggered {
                     Vec::new()
                 } else {
-                    log::debug!(target: target,"Hotkey is not yet activated, releasing pressed keys: {:?}", triggered.1);
+                    log::info!( target: target, "Activating binding for hotkey {:?}", triggered.0);
+                    log::debug!(target: target, "Hotkey is not yet activated, releasing pressed keys: {:?}", triggered.1);
                     /*filter_modifier_keys*/(&triggered.1).iter()
                         .map(|&vk| KeyStroke::classic(vk, KeyAction::Release))
                         .collect()
@@ -57,7 +59,7 @@ fn main() {
                 let char_keystroke = KeyStroke::unicode(char_to_post_clone, KeyAction::Press);
                 send_key_sequence(&pre_keys, &[char_keystroke], &[]);
             }), Box::new(move |triggered| {
-                let target= "[DEACTIVATION]";
+                let target= "[main::hotkey_deactivation]";
                 log::debug!(target: target, "Triggered {:?} on keyrelease.", triggered);
                 let post_keys: Vec<KeyStroke> =  if triggered.0.triggered {
                     Vec::new()

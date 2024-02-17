@@ -73,9 +73,12 @@ impl KeyManager {
         Self(storage, Vec::new())
     }
 
-    pub fn keydown(&mut self, key: VIRTUAL_KEY, injected: bool) -> bool {
+    pub fn keydown(&mut self, key: VIRTUAL_KEY, injected: bool, raw: KBDStructWrapper) -> bool {
         let old_pressed = self.0.clone();
-        let _existed = self.0.insert(key);
+        let existed = self.0.insert(key);
+        if existed {
+            log::debug!(target: "KeyboardHook", "Pressing  key: {:width$?}. Keys pressed: {:?} | {:?}", VirtualKey(key), self.dump().dump(), raw, width=15)
+        }
         //if existed {
         let mut result = false;
         for (i, item) in self.1.iter().enumerate() {
@@ -109,10 +112,12 @@ impl KeyManager {
         &(self.0)
     }
 
-    pub fn keyup(&mut self, key: VIRTUAL_KEY, injected: bool) -> bool {
+    pub fn keyup(&mut self, key: VIRTUAL_KEY, injected: bool, raw: KBDStructWrapper) -> bool {
         let old_pressed = self.0.clone();
-        let _existed = self.0.remove(&key);
-        //if existed {
+        let existed = self.0.remove(&key);
+        if existed {
+            log::debug!(target: "KeyboardHook", "Releasing key: {:width$?}. Keys pressed: {:?} | {:?}", VirtualKey(key), self.dump().dump(), raw, width=15)
+        }
         let mut result = false;
         for (i, item) in self.1.iter().enumerate() {
             result = item

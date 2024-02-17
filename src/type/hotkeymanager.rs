@@ -1,18 +1,16 @@
 use std::collections::{BTreeMap, HashMap, VecDeque};
-
 use std::fmt::{Debug, Formatter};
-
-use indexmap::IndexSet;
-
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
+use indexmap::IndexSet;
+
+use crate::r#type::Dump;
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::keyboardhook::KeyboardHookMetadata;
-use crate::r#type::Dump;
+use crate::win::{is_meta_or_alt, ToScanCode, ToUnicode, VIRTUAL_KEY};
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY;
 use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{VK_LSHIFT, VK_RSHIFT, VK_SHIFT};
-use crate::win::{is_meta_or_alt, ToScanCode, ToUnicode, VIRTUAL_KEY};
 
 pub type KeyBindings = Vec<KeyBinding>;
 pub type CharKeyBindings = BTreeMap<BindingChar, KeyBindings>;
@@ -54,11 +52,20 @@ impl Debug for Key {
                 Key::VirtualKey(k) => {
                     match KNOWN_VIRTUAL_KEY::try_from(*k) {
                         Ok(k) => format!("{:?}", k),
-                        Err(e) => format!("VIRTUAL_KEY({})", e.into_inner()),
+                        Err(e) => {
+                            let code = e.into_inner();
+
+                            if let Some(char) = &code.to_unicode_localized() {
+                                format!("'{}'", char)
+                            } else {
+                                format!("VKey({})", &code)
+                            }
+
+                        },
                     }
                 }
-                Key::Character(char) => format!("{}", char),
-                Key::Scancode(code) => format!("{:x}", code),
+                Key::Character(char) => format!("'{}'", char),
+                Key::Scancode(code) => format!("0x{:x}", code),
             }
         )
     }
@@ -385,7 +392,7 @@ impl HotkeyManager {
         if let Some(bindings) = self.bindings_by_length.get_mut(&pressed_count) {
             for binding in bindings.iter_mut() {
                 if binding.should_trigger(pressed_keys, &mut scancode_cache, &mut char_cache) {
-                    log::debug!(target: "HotkeyManager", "Got a match, firing callback {:?}", binding);
+                    log::trace!(target: "HotkeyManager", "Got a match, firing callback {:?}", binding);
                     return binding.execute_binding_actions(metadata, pressed_keys);
                 }
             }

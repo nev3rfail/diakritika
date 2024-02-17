@@ -22,7 +22,7 @@ use crate::win::keyboard_vk::KNOWN_VIRTUAL_KEY::{
 
 pub const KEYSTROKE_MARKER: usize = 0x666;
 
-struct KBDStructWrapper(KBDLLHOOKSTRUCT);
+pub struct KBDStructWrapper(KBDLLHOOKSTRUCT);
 
 impl KBDStructWrapper {
     fn is_injected(&self) -> bool {
@@ -63,7 +63,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
             } else {
                 match ev {
                     KEYBOARD_HOOK::WM_KEYDOWN | KEYBOARD_HOOK::WM_SYSKEYDOWN => {
-                        log::debug!(target: "keyboard_hook_proc",
+                        log::trace!(target: "keyboard_hook_proc",
                             "key_press: {:?}: {:?}",
                             ev,
                             KBDStructWrapper(kbd_struct)
