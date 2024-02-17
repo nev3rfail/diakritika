@@ -31,3 +31,10 @@ pub static HOTKEY_MANAGER_INSTANCE: Lazy<Arc<parking_lot::Mutex<HotkeyManager>>>
 
         hotkey_manager
     });
+/// This list is used for blocking specific scancodes from entering the Window message queue
+///
+/// Windows for some odd legacy reason generates an additional keystroke when AltGr is pressed.
+/// This leads to bad hotkey interpretation in keystroke processor and in general to some weird side
+/// effects because of the way how we treat keybindings with alt pressed.
+///
+pub const SCANCODE_BLACKLIST: [u32;2] = [0x21d, 0xE038];

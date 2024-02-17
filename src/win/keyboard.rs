@@ -1,4 +1,4 @@
-use crate::r#static::KEY_MANAGER_INSTANCE;
+use crate::r#static::{KEY_MANAGER_INSTANCE, SCANCODE_BLACKLIST};
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::hotkeymanager::PressedKeys;
 use crate::win::{ToChar, ToScanCode, ToUnicode, HC_ACTION, KEYBOARD_HOOK, VIRTUAL_KEY};
@@ -50,11 +50,17 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
     let handled = if n_code == HC_ACTION {
         if let Some(ev) = KEYBOARD_HOOK::from_u32(w_param as u32) {
             let kbd_struct = unsafe { *(l_param as *const KBDLLHOOKSTRUCT) };
-
-            /// We ignore all of the keystrokes that were produced by us
-            if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
-                //if kbd_struct.vkCode == VK_PACKET as u32 {
-                log::debug!(target: "keyboard_hook_proc",
+            /// We intercept the keystrokes from the blacklist
+            if SCANCODE_BLACKLIST.contains(&kbd_struct.scanCode) {
+                log::trace!(target: "keyboard_hook_proc",
+                    "key intercepted: {:?}: {:?}",
+                    ev,
+                    KBDStructWrapper(kbd_struct)
+                );
+                Some(1)
+            } else if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
+                /// We ignore and pass the keystrokes that we produced ourselves
+                log::trace!(target: "keyboard_hook_proc",
                     "key_ignored: {:?}: {:?}",
                     ev,
                     KBDStructWrapper(kbd_struct)
@@ -71,6 +77,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                         let result = &KEY_MANAGER_INSTANCE.write().keydown(
                             kbd_struct.vkCode as _,
                             kbd_struct.flags & LLKHF_INJECTED != 0,
+                            KBDStructWrapper(kbd_struct)
                         );
                         if *result {
                             Some(1)
@@ -87,6 +94,7 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                         let result = &KEY_MANAGER_INSTANCE.write().keyup(
                             kbd_struct.vkCode as _,
                             kbd_struct.flags & LLKHF_INJECTED != 0,
+                            KBDStructWrapper(kbd_struct)
                         );
                         if *result {
                             Some(1)

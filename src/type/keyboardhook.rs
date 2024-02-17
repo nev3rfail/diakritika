@@ -2,9 +2,11 @@ use crate::r#type::hook::{HookContainer, HookMetadata};
 use crate::win::VIRTUAL_KEY;
 use anyhow::Error;
 use std::any::Any;
+use crate::r#type::Dump;
 
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::hotkeymanager::PressedKeys;
+use crate::win::keyboard::KBDStructWrapper;
 
 pub struct KeyManager(PressedKeys, Vec<HookContainer>);
 
