@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+
 use std::env;
 use std::str::FromStr;
 
@@ -8,7 +8,7 @@ use simple_logger::SimpleLogger;
 
 use crate::keybindings::bindings_from_map;
 use crate::r#static::HOTKEY_MANAGER_INSTANCE;
-use crate::r#type::hotkeymanager::CharBindingState;
+
 use crate::r#type::Dump;
 
 use crate::win::keyboard::{send_key_sequence, KeyAction, KeyStroke};

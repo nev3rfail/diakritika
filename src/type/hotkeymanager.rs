@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt::{Debug, Formatter};
 
 use indexmap::IndexSet;
-use log::log;
+
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
