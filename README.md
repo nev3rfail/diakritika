@@ -15,8 +15,9 @@ in a way that does not twist your arm and does not take away your @s and #s and 
 
 ### Configuration
 is simple:
+* open `bindings.ini`
 * start a new line
-* put the letter you want to type into an `[]`. For example, [ř]
+* put the letter you want to type into an `[]`. For example, `[ř]`
 * On the next line key add key combinations that should trigger this letter, one binding per line (see an example below).
     * Program automatically detects characters from config:
     * Everything with a length of 1 character is a string symbol
@@ -25,7 +26,9 @@ is simple:
 
 >⚠ You are also not restricted to simple bindings like alt+s, you can do something like `ctrl`+`n`+`m`+`F2` to paste a shit emoji and it should be fine.
 
-```ini
+Here is a sample `bindings.ini` file with Czech and Ukrainian letters:
+```ini 
+; US->Cz
 [á]
 alt+a
 [č]
@@ -36,8 +39,10 @@ alt+d
 lalt+e
 [ě]
 ralt+e
+[í]
+alt+i
 [ň]
-win+n
+alt+n
 [ó]
 alt+o
 [ř]
@@ -55,7 +60,7 @@ alt+y
 [ž]
 alt+z
 
-
+; Ru->UA
 [і]
 ALT+ы
 ALT+s
