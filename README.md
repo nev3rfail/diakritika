@@ -87,3 +87,4 @@ ALT+'
 * [ ] GitHub CI because manually generation builds is pain
 * [ ] Add support of different things instead of typing letters? for example, running scripts
 * [ ] I still don't quite like how program handles repeating characters with alt key pressed. and especially with altGr. It works and works great, but not perfect
+* [ ] Flexible hotkey rules. For example, make hotkey strictly ordered, or withold keyboard events from being sent until the hotkey is complete
