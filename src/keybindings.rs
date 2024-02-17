@@ -59,16 +59,16 @@ pub(crate) fn bindings_from_map(
             if upper.is_some() {
                 let upper = once_with(|| {
                     let mut new = Vec::new();
-                    upper.unwrap().iter().for_each(|item| {
+                    upper.expect("Failed to get upper variants").iter().for_each(|item| {
                         let ex = expand_modifiers(item);
                         new.extend(ex)
                     });
                     new
                 })
                 .next()
-                .expect("OMG WTF");
+                .expect("OnceWith broke");
                 bindings
-                    .entry(char_to_post.to_uppercase().next().unwrap())
+                    .entry(char_to_post.to_uppercase().next().expect(&*format!("Failed to get uppercase from {}", &char_to_post)))
                     .or_default()
                     .extend(upper);
             }

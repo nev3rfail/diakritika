@@ -3,10 +3,6 @@ use crate::win::VIRTUAL_KEY;
 use anyhow::Error;
 use std::any::Any;
 
-
-
-
-
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::hotkeymanager::PressedKeys;
 
@@ -92,15 +88,15 @@ impl KeyManager {
                     pressed_keys_before_hook: old_pressed.clone(),
                 })
                 .unwrap_or_else(|e| {
-                    println!("Error processing hookď #{}: {:?}", i, e);
+                    log::error!("Error processing hook #{}: {:?}", i, e);
                     false
                 });
-            println!(
+            log::trace!(
                 "Hooking keydown of {:?} resulted in {}",
                 VirtualKey(key),
                 result
             );
-            if result == true {
+            if result {
                 break;
             }
         }
@@ -128,15 +124,15 @@ impl KeyManager {
                     pressed_keys_before_hook: old_pressed.clone(),
                 })
                 .unwrap_or_else(|e| {
-                    println!("Error processing hook #{}: {:?}", i, e);
+                    log::error!("Error processing hook #{}: {:?}", i, e);
                     false
                 });
-            println!(
+            log::trace!(
                 "Hooking keyup of {:?} resulted in {}",
                 VirtualKey(key),
                 result
             );
-            if result == true {
+            if result {
                 break;
             }
         }

@@ -5,6 +5,7 @@ use std::fmt::{Debug, Formatter};
 use indexmap::IndexSet;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
+use log::log;
 
 use crate::r#type::hotkeymanager::Key::VirtualKey;
 use crate::r#type::keyboardhook::KeyboardHookMetadata;
@@ -183,12 +184,12 @@ impl HotkeyBinding {
         scancode_cache: &mut HashMap<u32, u32>,
         char_cache: &mut HashMap<u32, Option<String>>,
     ) -> bool {
-        print!("{} = {}", self.keys.dump(), pressed_keys.dump());
+        log::trace!("{} = {}", self.keys.dump(), pressed_keys.dump());
         for key in &self.keys {
             match key {
                 Key::VirtualKey(vk) => {
                     if !pressed_keys.contains(vk) {
-                        println!(" == false");
+                        log::trace!(" == false");
                         return false;
                     }
                 }
@@ -201,9 +202,9 @@ impl HotkeyBinding {
                             .clone()
                     });
                     // Compare Option<&String> with &Option<String> using map and as_deref
-                    //println!("Checking if {:?} in {:?}", expected_str, pressed_str);
+                    //log::trace!("Checking if {:?} in {:?}", expected_str, pressed_str);
                     if pressed_str.as_deref() != Some(expected_str) {
-                        println!(" == false");
+                        log::trace!(" == false");
                         return false;
                     }
                 }
@@ -214,13 +215,13 @@ impl HotkeyBinding {
                         pressed_sc == expected_sc
                     });
                     if !pressed_sc_match {
-                        println!(" == false");
+                        log::trace!(" == false");
                         return false;
                     }
                 }
             }
         }
-        println!(" == true");
+        log::trace!(" == true");
         true
     }
 }
@@ -232,7 +233,7 @@ impl BindingAction {
             BindingAction::Channel(tx) | BindingAction::Magic(tx) => {
                 if let Err(error) = tx.send(TriggeredHotkey(binding.clone(), pressed_keys.clone()))
                 {
-                    println!("BROKEN PIPE: {:?}", error);
+                    log::trace!("BROKEN PIPE: {:?}", error);
                 }
             }
         }
@@ -292,7 +293,7 @@ impl HotkeyManager {
         let bindings_for_length = self.bindings_by_length.entry(binding_length).or_default();
         bindings_for_length.push_back(binding);
 
-        return bindings_for_length.back().expect("WTF");
+        return bindings_for_length.back().expect("Can't add binding to the pile");
     }
 
     /*pub(crate) fn add_binding(&mut self, keys: KeyBinding, on_press: Callback, on_release:Callback, ordered: bool) -> &HotkeyBinding  {
@@ -312,13 +313,13 @@ impl HotkeyManager {
 
         thread::spawn(move || {
             for data in on_press_rx {
-                println!("WOW! something arrived!");
+                log::trace!(target: "MagicBinding", "[keypress] received new data");
                 on_press(data);
             }
         });
         thread::spawn(move || {
             for data in on_release_rx {
-                println!("WOW! something arrived to release! ");
+                log::trace!(target: "MagicBinding", "[keyrelease] received new data");
                 on_release(data);
             }
         });
@@ -359,13 +360,16 @@ impl HotkeyManager {
                 .is_empty()
             {
                 if metadata.pressing() {
-                    println!(
-                        "!!!!!!!!!!!!!!!! We have running shortcut ignoring {:?}",
+                    log::debug!(target: "HotkeyManager",
+                        "We think that we are sill pressing a binding, so ignoring {:?}",
                         VirtualKey(key.clone())
                     );
                     return true;
                 } else if metadata.releasing() && metadata.injected() {
-                    println!("!!!!!!!!!!!!!!!! IGNORING INJECTED VALUE THAT WE ARE CURRENTLY PRESSING {:?}", VirtualKey(key));
+                    log::debug!(target: "HotkeyManager",
+                        "Ignoring injected releases {:?}",
+                        VirtualKey(key.clone())
+                    );
                     return true;
                 }
             }
@@ -379,7 +383,7 @@ impl HotkeyManager {
         if let Some(bindings) = self.bindings_by_length.get_mut(&pressed_count) {
             for binding in bindings.iter_mut() {
                 if binding.should_trigger(pressed_keys, &mut scancode_cache, &mut char_cache) {
-                    println!("TRIGGERED");
+                    log::debug!(target: "HotkeyManager", "Got a match, firing callback {:?}", binding);
                     return binding.execute_binding_actions(metadata, pressed_keys);
                 }
             }

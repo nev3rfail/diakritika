@@ -1,5 +1,5 @@
 use crate::win::keyboard::keyboard_hook_proc;
-use crate::win::MessageType;
+use crate::win::{get_last_error_message, MessageType};
 use std::ptr;
 use winapi::shared::windef::HWND;
 use winapi::um::errhandlingapi::GetLastError;
@@ -21,7 +21,7 @@ pub(crate) unsafe extern "system" fn wnd_proc(
         Some(common) => {
             match common {
                 MessageType::WM_CREATE => {
-                    println!("registering???");
+                    log::trace!("Registering a lowlevel keyboard hook...");
                     /////////////
                     //////////// keyboard
                     ////////////
@@ -32,7 +32,8 @@ pub(crate) unsafe extern "system" fn wnd_proc(
                         0,
                     );
                     if hook.is_null() {
-                        println!("FAILED TO INSTALL KB HOOK: {:?}", GetLastError());
+                        log::trace!("Failed to install kb hook: {:?}", get_last_error_message());
+                        panic!("Aborting.");
                     }
                     Some(0)
                 }
@@ -49,7 +50,7 @@ pub(crate) unsafe extern "system" fn wnd_proc(
 
     match handled {
         None => {
-            //println!("No one handled message, redirecting to the next hook :(");
+            //log::trace!("No one handled message, redirecting to the next hook :(");
             DefWindowProcW(hwnd, msg, w_param, l_param)
         }
         Some(res) => res,
@@ -86,7 +87,7 @@ pub fn create_window() {
         );
 
         if hwnd.is_null() {
-            println!("HWND is null, dying");
+            log::trace!("HWND is null, dying. Reason: {}", get_last_error_message());
             return;
         }
         // Message loop

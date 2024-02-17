@@ -126,7 +126,7 @@ fn to_unicode(key: VIRTUAL_KEY, locale: HKL) -> Option<String> {
     // Populate key_state with the current state of each key
     let the_key_state = unsafe {
         if GetKeyboardState(key_state.as_mut_ptr()) == 0 {
-            println!("Failed to get keyboard state: {}", get_last_error_message());
+            log::trace!("Failed to get keyboard state: {}", get_last_error_message());
             null()
         } else {
             key_state.as_ptr()
@@ -153,7 +153,7 @@ fn to_unicode(key: VIRTUAL_KEY, locale: HKL) -> Option<String> {
         let translated_chars = &buffer[..result as usize];
         // Handle or display the translated characters as needed
         let s = String::from_utf16(translated_chars);
-        //println!("Translated characters: {:?}", translated_chars);
+        //log::trace!("Translated characters: {:?}", translated_chars);
 
         Some(s.expect("Can't convert translated_chars to String"))
     } else {
@@ -200,7 +200,7 @@ fn get_foreground_window_keyboard_layout() -> HKL {
         let thread_id = GetWindowThreadProcessId(hwnd, &mut process_id as *mut DWORD); // Get thread ID
         let layout = GetKeyboardLayout(thread_id); // Get the keyboard layout for the thread
         if layout.is_null() {
-            println!("{}", get_last_error_message());
+            log::trace!("{}", get_last_error_message());
         }
         layout
     }
@@ -211,7 +211,7 @@ pub(crate) fn load_preload_keyboard_layouts() {
     let preload_key_result = hklm.open_subkey("Keyboard Layout\\Preload");
 
     if preload_key_result.is_err() {
-        println!("Failed to open registry key for keyboard layout preload.");
+        log::trace!("Failed to open registry key for keyboard layout preload.");
         return;
     }
 

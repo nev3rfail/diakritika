@@ -40,25 +40,17 @@ impl Debug for KBDStructWrapper {
     }
 }
 
-/*else if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
-    println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-    Some(1)
-}*/
-/*else if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
-println!("[!!!] INTERCEPT: {:?} -- {:?}", ev, KBDStructWrapper(kbd_struct));
-Some(1)*/
 
 pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: isize) -> isize {
     let handled = if n_code == HC_ACTION {
         if let Some(ev) = KEYBOARD_HOOK::from_u32(w_param as u32) {
             let kbd_struct = unsafe { *(l_param as *const KBDLLHOOKSTRUCT) };
-            // VK_PACKET is sent when someone sends unicode characters
-            //if test_flag(kbd_struct.flags, LLKHF_INJECTED) {
+
             /// We ignore all of the keystrokes that were produced by us
             if kbd_struct.dwExtraInfo == KEYSTROKE_MARKER {
                 //if kbd_struct.vkCode == VK_PACKET as u32 {
-                println!(
-                    "[!!!] IGNORE: {:?} -- {:?}",
+                log::debug!(target: "keyboard_hook_proc",
+                    "key_ignored: {:?}: {:?}",
                     ev,
                     KBDStructWrapper(kbd_struct)
                 );
@@ -66,8 +58,8 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
             } else {
                 match ev {
                     KEYBOARD_HOOK::WM_KEYDOWN | KEYBOARD_HOOK::WM_SYSKEYDOWN => {
-                        println!(
-                            "[!!!] press: {:?} -- {:?}",
+                        log::debug!(target: "keyboard_hook_proc",
+                            "key_press: {:?}: {:?}",
                             ev,
                             KBDStructWrapper(kbd_struct)
                         );
@@ -76,15 +68,14 @@ pub extern "system" fn keyboard_hook_proc(n_code: i32, w_param: usize, l_param: 
                             kbd_struct.flags & LLKHF_INJECTED != 0,
                         );
                         if *result {
-                            //println!("IT FUKKEN WORKED?");
                             Some(1)
                         } else {
                             None
                         }
                     }
                     KEYBOARD_HOOK::WM_KEYUP | KEYBOARD_HOOK::WM_SYSKEYUP => {
-                        println!(
-                            "[!!!] release: {:?} -- {:?}",
+                        log::trace!(target: "keyboard_hook_proc",
+                            "key_release: {:?}: {:?}",
                             ev,
                             KBDStructWrapper(kbd_struct)
                         );
@@ -117,7 +108,7 @@ pub fn virtual_keys<'a, T: AsRef<[KeyStroke]> + IntoIterator<Item = &'a KeyStrok
     keys: T,
 ) {
     for stroke in keys {
-        println!("{:?}", stroke);
+        log::trace!("{:?}", stroke);
         if stroke.key_type == Classic {
             unsafe {
                 keybd_event(
