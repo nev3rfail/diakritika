@@ -25,9 +25,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let level = match args.len() {
-        1 => LevelFilter::Error,
-        2 => LevelFilter::from_str(&args[2]).unwrap_or(LevelFilter::Error),
-        _ => LevelFilter::from_str(&args[2]).unwrap_or(LevelFilter::Trace),
+        0|1 => LevelFilter::Error,
+        2 => LevelFilter::from_str(&args[1]).unwrap_or(LevelFilter::Error),
+        _ => LevelFilter::from_str(&args[1]).unwrap_or(LevelFilter::Trace),
     };
     println!("Verbosity: {}", level);
     log::set_max_level(level);
