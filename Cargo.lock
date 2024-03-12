@@ -434,7 +434,7 @@ dependencies = [
 
 [[package]]
 name = "ďíáǩříťíǩád"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "derive_more",
